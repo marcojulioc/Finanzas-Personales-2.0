@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import {
@@ -7,10 +8,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Landmark, CreditCard, TrendingUp, TrendingDown } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Landmark, CreditCard, TrendingUp, TrendingDown, Plus, Receipt, ArrowRight } from 'lucide-react'
+import { getCategoryById } from '@/lib/categories'
 
 async function getDashboardData(userId: string) {
-  const [bankAccounts, creditCards] = await Promise.all([
+  const [bankAccounts, creditCards, recentTransactions] = await Promise.all([
     db.bankAccount.findMany({
       where: { userId, isActive: true },
       orderBy: { createdAt: 'asc' },
@@ -18,6 +22,15 @@ async function getDashboardData(userId: string) {
     db.creditCard.findMany({
       where: { userId, isActive: true },
       orderBy: { createdAt: 'asc' },
+    }),
+    db.transaction.findMany({
+      where: { userId },
+      orderBy: { date: 'desc' },
+      take: 10,
+      include: {
+        bankAccount: { select: { name: true, color: true } },
+        creditCard: { select: { name: true, color: true } },
+      },
     }),
   ])
 
@@ -39,6 +52,7 @@ async function getDashboardData(userId: string) {
   return {
     bankAccounts,
     creditCards,
+    recentTransactions,
     totalBalanceMXN,
     totalDebtMXN,
     netBalance: totalBalanceMXN - totalDebtMXN,
@@ -52,20 +66,35 @@ function formatCurrency(amount: number, currency = 'MXN') {
   }).format(amount)
 }
 
+function formatDate(date: Date) {
+  return new Date(date).toLocaleDateString('es-MX', {
+    day: '2-digit',
+    month: 'short',
+  })
+}
+
 export default async function DashboardPage() {
   const session = await auth()
   if (!session?.user?.id) return null
 
-  const { bankAccounts, creditCards, totalBalanceMXN, totalDebtMXN, netBalance } =
+  const { bankAccounts, creditCards, recentTransactions, totalBalanceMXN, totalDebtMXN, netBalance } =
     await getDashboardData(session.user.id)
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-display font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Bienvenido, {session.user.name?.split(' ')[0]}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-display font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Bienvenido, {session.user.name?.split(' ')[0]}
+          </p>
+        </div>
+        <Link href="/transactions">
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            Nueva Transacción
+          </Button>
+        </Link>
       </div>
 
       {/* Resumen de balances */}
@@ -245,6 +274,103 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Transacciones recientes */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-primary" />
+              <CardTitle>Transacciones Recientes</CardTitle>
+            </div>
+            <Link href="/transactions">
+              <Button variant="ghost" size="sm">
+                Ver todas
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
+          </div>
+          <CardDescription>Últimos movimientos registrados</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recentTransactions.length === 0 ? (
+            <div className="text-center py-8">
+              <Receipt className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
+                No hay transacciones registradas
+              </p>
+              <Link href="/transactions">
+                <Button variant="outline" size="sm" className="mt-2">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Registrar primera transacción
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentTransactions.map((transaction) => {
+                const category = getCategoryById(transaction.category)
+                return (
+                  <div
+                    key={transaction.id}
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center text-base"
+                        style={{
+                          backgroundColor: `${category?.color || '#6b7280'}20`,
+                        }}
+                      >
+                        {category?.icon || '❓'}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">
+                          {category?.name || transaction.category}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{formatDate(transaction.date)}</span>
+                          {(transaction.bankAccount || transaction.creditCard) && (
+                            <>
+                              <span>•</span>
+                              <Badge
+                                variant="outline"
+                                className="font-normal text-xs py-0"
+                                style={{
+                                  borderColor:
+                                    transaction.bankAccount?.color ||
+                                    transaction.creditCard?.color ||
+                                    undefined,
+                                }}
+                              >
+                                {transaction.bankAccount?.name ||
+                                  transaction.creditCard?.name}
+                              </Badge>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <span
+                      className={`font-mono font-medium ${
+                        transaction.type === 'income'
+                          ? 'text-success'
+                          : 'text-danger'
+                      }`}
+                    >
+                      {transaction.type === 'income' ? '+' : '-'}
+                      {formatCurrency(
+                        Number(transaction.amount),
+                        transaction.currency
+                      )}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
