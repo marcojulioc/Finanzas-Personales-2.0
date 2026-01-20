@@ -1,0 +1,82 @@
+import { NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
+import { db } from '@/lib/db'
+import { registerSchema } from '@/lib/validations'
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json()
+    const validated = registerSchema.safeParse(body)
+
+    if (!validated.success) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Datos inválidos',
+            details: validated.error.flatten().fieldErrors,
+          },
+        },
+        { status: 422 }
+      )
+    }
+
+    const { name, email, password } = validated.data
+
+    // Verificar si el email ya existe
+    const existingUser = await db.user.findUnique({
+      where: { email },
+    })
+
+    if (existingUser) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'EMAIL_EXISTS',
+            message: 'Este email ya está registrado',
+          },
+        },
+        { status: 409 }
+      )
+    }
+
+    // Hashear contraseña
+    const hashedPassword = await bcrypt.hash(password, 12)
+
+    // Crear usuario
+    const user = await db.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        onboardingCompleted: false,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        onboardingCompleted: true,
+        createdAt: true,
+      },
+    })
+
+    return NextResponse.json(
+      {
+        data: user,
+        message: 'Usuario creado exitosamente',
+      },
+      { status: 201 }
+    )
+  } catch (error) {
+    console.error('Error en registro:', error)
+    return NextResponse.json(
+      {
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Error interno del servidor',
+        },
+      },
+      { status: 500 }
+    )
+  }
+}

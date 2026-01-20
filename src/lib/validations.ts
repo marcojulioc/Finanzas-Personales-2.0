@@ -1,0 +1,109 @@
+import { z } from 'zod'
+
+// Autenticación
+export const loginSchema = z.object({
+  email: z.email('Email inválido'),
+  password: z.string().min(1, 'La contraseña es requerida'),
+})
+
+export const registerSchema = z.object({
+  name: z
+    .string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(50, 'El nombre no puede exceder 50 caracteres'),
+  email: z.email('Email inválido'),
+  password: z
+    .string()
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'La contraseña debe contener al menos una mayúscula, una minúscula y un número'
+    ),
+})
+
+// Cuentas bancarias
+export const bankAccountSchema = z.object({
+  name: z
+    .string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(50, 'El nombre no puede exceder 50 caracteres'),
+  bankName: z
+    .string()
+    .min(2, 'El banco debe tener al menos 2 caracteres')
+    .max(50, 'El banco no puede exceder 50 caracteres'),
+  accountType: z.enum(['savings', 'checking'], {
+    message: 'Tipo de cuenta inválido',
+  }),
+  currency: z.enum(['MXN', 'USD'], {
+    message: 'Moneda inválida',
+  }),
+  balance: z
+    .number()
+    .min(0, 'El balance no puede ser negativo')
+    .max(999999999999, 'El balance excede el límite'),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, 'Color inválido')
+    .optional(),
+})
+
+// Tarjetas de crédito
+export const creditCardSchema = z.object({
+  name: z
+    .string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(50, 'El nombre no puede exceder 50 caracteres'),
+  bankName: z
+    .string()
+    .min(2, 'El banco debe tener al menos 2 caracteres')
+    .max(50, 'El banco no puede exceder 50 caracteres'),
+  cutOffDay: z
+    .number()
+    .int()
+    .min(1, 'El día de corte debe estar entre 1 y 31')
+    .max(31, 'El día de corte debe estar entre 1 y 31'),
+  paymentDueDay: z
+    .number()
+    .int()
+    .min(1, 'El día de pago debe estar entre 1 y 31')
+    .max(31, 'El día de pago debe estar entre 1 y 31'),
+  limitMXN: z.number().min(0, 'El límite no puede ser negativo').default(0),
+  limitUSD: z.number().min(0, 'El límite no puede ser negativo').default(0),
+  balanceMXN: z.number().min(0, 'La deuda no puede ser negativa').default(0),
+  balanceUSD: z.number().min(0, 'La deuda no puede ser negativa').default(0),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, 'Color inválido')
+    .optional(),
+})
+
+// Transacciones
+export const transactionSchema = z.object({
+  type: z.enum(['income', 'expense'], {
+    message: 'Tipo de transacción inválido',
+  }),
+  amount: z.number().positive('El monto debe ser mayor a 0'),
+  currency: z.enum(['MXN', 'USD'], {
+    message: 'Moneda inválida',
+  }),
+  category: z
+    .string()
+    .min(1, 'La categoría es requerida')
+    .max(30, 'La categoría no puede exceder 30 caracteres'),
+  description: z
+    .string()
+    .max(100, 'La descripción no puede exceder 100 caracteres')
+    .optional(),
+  date: z.coerce.date(),
+  bankAccountId: z.string().cuid().optional(),
+  creditCardId: z.string().cuid().optional(),
+  isCardPayment: z.boolean().default(false),
+  targetCardId: z.string().cuid().optional(),
+})
+
+// Tipos inferidos
+export type LoginInput = z.infer<typeof loginSchema>
+export type RegisterInput = z.infer<typeof registerSchema>
+export type BankAccountInput = z.infer<typeof bankAccountSchema>
+export type CreditCardInput = z.infer<typeof creditCardSchema>
+export type TransactionInput = z.infer<typeof transactionSchema>

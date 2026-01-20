@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum AccountType {
+  savings
+  checking
+}
+
+enum Currency {
+  MXN
+  USD
+}
+
+enum TransactionType {
+  income
+  expense
+}
+
+// NextAuth.js Models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Application Models
+model User {
+  id                  String        @id @default(cuid())
+  email               String        @unique
+  name                String
+  password            String?
+  image               String?
+  emailVerified       DateTime?
+  onboardingCompleted Boolean       @default(false)
+
+  // NextAuth relations
+  accounts Account[]
+  sessions Session[]
+
+  // App relations
+  bankAccounts BankAccount[]
+  creditCards  CreditCard[]
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}
+
+model BankAccount {
+  id          String      @id @default(cuid())
+  userId      String
+  name        String      @db.VarChar(50)
+  bankName    String      @db.VarChar(50)
+  accountType AccountType
+  currency    Currency
+  balance     Decimal     @db.Decimal(12, 2)
+  color       String?     @db.VarChar(7)
+  isActive    Boolean     @default(true)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model CreditCard {
+  id            String  @id @default(cuid())
+  userId        String
+  name          String  @db.VarChar(50)
+  bankName      String  @db.VarChar(50)
+  cutOffDay     Int     @db.SmallInt
+  paymentDueDay Int     @db.SmallInt
+  limitMXN      Decimal @db.Decimal(12, 2)
+  limitUSD      Decimal @db.Decimal(12, 2)
+  balanceMXN    Decimal @db.Decimal(12, 2)
+  balanceUSD    Decimal @db.Decimal(12, 2)
+  color         String? @db.VarChar(7)
+  isActive      Boolean @default(true)
+
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions     Transaction[] @relation("CardTransactions")
+  paymentsReceived Transaction[] @relation("CardPayments")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  userId      String
+  type        TransactionType
+  amount      Decimal         @db.Decimal(12, 2)
+  currency    Currency
+  category    String          @db.VarChar(30)
+  description String?         @db.VarChar(100)
+  date        DateTime        @db.Date
+
+  // Relación con cuenta bancaria (opcional)
+  bankAccountId String?
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id])
+
+  // Relación con tarjeta de crédito (opcional)
+  creditCardId String?
+  creditCard   CreditCard? @relation("CardTransactions", fields: [creditCardId], references: [id])
+
+  // Para pagos de tarjeta
+  isCardPayment Boolean     @default(false)
+  targetCardId  String?
+  targetCard    CreditCard? @relation("CardPayments", fields: [targetCardId], references: [id])
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, date])
+  @@index([bankAccountId])
+  @@index([creditCardId])
+}
