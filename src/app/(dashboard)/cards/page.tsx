@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2, Pencil, CreditCard } from 'lucide-react'
 import { z } from 'zod'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -162,8 +163,10 @@ export default function CardsPage() {
         })
 
         if (!response.ok) {
-          throw new Error('Error al actualizar')
+          const result = await response.json()
+          throw new Error(result.error || 'Error al actualizar')
         }
+        toast.success('Tarjeta actualizada correctamente')
       } else {
         const response = await fetch('/api/cards', {
           method: 'POST',
@@ -172,14 +175,17 @@ export default function CardsPage() {
         })
 
         if (!response.ok) {
-          throw new Error('Error al crear')
+          const result = await response.json()
+          throw new Error(result.error || 'Error al crear')
         }
+        toast.success('Tarjeta creada correctamente')
       }
 
       setIsDialogOpen(false)
       fetchCards()
     } catch (error) {
       console.error('Error saving card:', error)
+      toast.error(error instanceof Error ? error.message : 'Error al guardar la tarjeta')
     }
   }
 
@@ -193,15 +199,17 @@ export default function CardsPage() {
 
       if (!response.ok) {
         const result = await response.json()
-        alert(result.error || 'Error al eliminar')
+        toast.error(result.error || 'Error al eliminar')
         return
       }
 
+      toast.success('Tarjeta eliminada correctamente')
       setIsDeleteDialogOpen(false)
       setDeletingCardId(null)
       fetchCards()
     } catch (error) {
       console.error('Error deleting card:', error)
+      toast.error('Error al eliminar la tarjeta')
     }
   }
 

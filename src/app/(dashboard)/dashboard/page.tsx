@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Landmark, CreditCard, TrendingUp, TrendingDown, Plus, Receipt, ArrowRight } from 'lucide-react'
 import { getCategoryById } from '@/lib/categories'
+import { getCardAlerts } from '@/lib/card-alerts'
+import { CardAlerts } from '@/components/card-alerts'
 
 async function getDashboardData(userId: string) {
   const [bankAccounts, creditCards, recentTransactions] = await Promise.all([
@@ -49,10 +51,21 @@ async function getDashboardData(userId: string) {
     return sum + Number(card.balanceMXN) + Number(card.balanceUSD) * exchangeRate
   }, 0)
 
+  // Calcular alertas de tarjetas
+  const cardAlerts = getCardAlerts(
+    creditCards.map((card) => ({
+      name: card.name,
+      color: card.color,
+      cutOffDay: card.cutOffDay,
+      paymentDueDay: card.paymentDueDay,
+    }))
+  )
+
   return {
     bankAccounts,
     creditCards,
     recentTransactions,
+    cardAlerts,
     totalBalanceMXN,
     totalDebtMXN,
     netBalance: totalBalanceMXN - totalDebtMXN,
@@ -77,7 +90,7 @@ export default async function DashboardPage() {
   const session = await auth()
   if (!session?.user?.id) return null
 
-  const { bankAccounts, creditCards, recentTransactions, totalBalanceMXN, totalDebtMXN, netBalance } =
+  const { bankAccounts, creditCards, recentTransactions, cardAlerts, totalBalanceMXN, totalDebtMXN, netBalance } =
     await getDashboardData(session.user.id)
 
   return (
@@ -96,6 +109,9 @@ export default async function DashboardPage() {
           </Button>
         </Link>
       </div>
+
+      {/* Alertas de tarjetas */}
+      <CardAlerts alerts={cardAlerts} />
 
       {/* Resumen de balances */}
       <div className="grid gap-4 md:grid-cols-3">

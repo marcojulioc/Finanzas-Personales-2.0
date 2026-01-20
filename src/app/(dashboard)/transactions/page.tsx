@@ -13,6 +13,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { z } from 'zod'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -260,8 +261,10 @@ export default function TransactionsPage() {
         })
 
         if (!response.ok) {
-          throw new Error('Error al actualizar')
+          const result = await response.json()
+          throw new Error(result.error || 'Error al actualizar')
         }
+        toast.success('Transacción actualizada correctamente')
       } else {
         const response = await fetch('/api/transactions', {
           method: 'POST',
@@ -270,14 +273,17 @@ export default function TransactionsPage() {
         })
 
         if (!response.ok) {
-          throw new Error('Error al crear')
+          const result = await response.json()
+          throw new Error(result.error || 'Error al crear')
         }
+        toast.success('Transacción registrada correctamente')
       }
 
       setIsDialogOpen(false)
       fetchTransactions(pagination.page)
     } catch (error) {
       console.error('Error saving transaction:', error)
+      toast.error(error instanceof Error ? error.message : 'Error al guardar la transacción')
     }
   }
 
@@ -290,14 +296,17 @@ export default function TransactionsPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Error al eliminar')
+        const result = await response.json()
+        throw new Error(result.error || 'Error al eliminar')
       }
 
+      toast.success('Transacción eliminada correctamente')
       setIsDeleteDialogOpen(false)
       setDeletingTransactionId(null)
       fetchTransactions(pagination.page)
     } catch (error) {
       console.error('Error deleting transaction:', error)
+      toast.error(error instanceof Error ? error.message : 'Error al eliminar la transacción')
     }
   }
 

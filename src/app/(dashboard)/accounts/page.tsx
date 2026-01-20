@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2, Pencil, Landmark } from 'lucide-react'
 import { z } from 'zod'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -146,8 +147,10 @@ export default function AccountsPage() {
         })
 
         if (!response.ok) {
-          throw new Error('Error al actualizar')
+          const result = await response.json()
+          throw new Error(result.error || 'Error al actualizar')
         }
+        toast.success('Cuenta actualizada correctamente')
       } else {
         const response = await fetch('/api/accounts', {
           method: 'POST',
@@ -156,14 +159,17 @@ export default function AccountsPage() {
         })
 
         if (!response.ok) {
-          throw new Error('Error al crear')
+          const result = await response.json()
+          throw new Error(result.error || 'Error al crear')
         }
+        toast.success('Cuenta creada correctamente')
       }
 
       setIsDialogOpen(false)
       fetchAccounts()
     } catch (error) {
       console.error('Error saving account:', error)
+      toast.error(error instanceof Error ? error.message : 'Error al guardar la cuenta')
     }
   }
 
@@ -177,15 +183,17 @@ export default function AccountsPage() {
 
       if (!response.ok) {
         const result = await response.json()
-        alert(result.error || 'Error al eliminar')
+        toast.error(result.error || 'Error al eliminar')
         return
       }
 
+      toast.success('Cuenta eliminada correctamente')
       setIsDeleteDialogOpen(false)
       setDeletingAccountId(null)
       fetchAccounts()
     } catch (error) {
       console.error('Error deleting account:', error)
+      toast.error('Error al eliminar la cuenta')
     }
   }
 
