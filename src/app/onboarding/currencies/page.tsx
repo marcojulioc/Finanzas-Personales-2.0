@@ -37,7 +37,9 @@ export default function OnboardingCurrenciesPage() {
         // Si es la moneda primaria, cambiar a otra
         if (code === primaryCurrency) {
           const remaining = prev.filter((c) => c !== code)
-          setPrimaryCurrency(remaining[0])
+          if (remaining[0]) {
+            setPrimaryCurrency(remaining[0])
+          }
         }
         return prev.filter((c) => c !== code)
       } else {
@@ -107,6 +109,7 @@ export default function OnboardingCurrenciesPage() {
           <div className="grid grid-cols-2 gap-2">
             {POPULAR_CURRENCIES.map((code) => {
               const currency = CURRENCIES[code]
+              if (!currency) return null
               const isSelected = selectedCurrencies.includes(code)
               const isPrimary = primaryCurrency === code
 
@@ -157,6 +160,7 @@ export default function OnboardingCurrenciesPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {CURRENCIES_BY_REGION[region as keyof typeof CURRENCIES_BY_REGION].map((code) => {
                   const currency = CURRENCIES[code]
+                  if (!currency) return null
                   const isSelected = selectedCurrencies.includes(code)
                   const isPrimary = primaryCurrency === code
 
@@ -201,6 +205,7 @@ export default function OnboardingCurrenciesPage() {
             <div className="flex flex-wrap gap-2">
               {selectedCurrencies.map((code) => {
                 const currency = CURRENCIES[code]
+                if (!currency) return null
                 const isPrimary = primaryCurrency === code
 
                 return (
@@ -228,7 +233,10 @@ export default function OnboardingCurrenciesPage() {
           <p className="text-sm">
             <span className="text-muted-foreground">Monedas seleccionadas: </span>
             <span className="font-medium">
-              {selectedCurrencies.map((c) => CURRENCIES[c].flag + ' ' + c).join(', ')}
+              {selectedCurrencies.map((c) => {
+                const currency = CURRENCIES[c]
+                return currency ? currency.flag + ' ' + c : c
+              }).join(', ')}
             </span>
           </p>
         </div>
