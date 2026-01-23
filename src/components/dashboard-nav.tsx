@@ -9,6 +9,7 @@ import {
   CreditCard,
   Receipt,
   PiggyBank,
+  BarChart3,
   LogOut,
   Moon,
   Sun,
@@ -39,6 +40,7 @@ const navItems = [
   { href: '/cards', label: 'Tarjetas', icon: CreditCard },
   { href: '/transactions', label: 'Transacciones', icon: Receipt },
   { href: '/budgets', label: 'Presupuestos', icon: PiggyBank },
+  { href: '/reports', label: 'Reportes', icon: BarChart3 },
 ]
 
 export function DashboardNav({ user }: DashboardNavProps) {
