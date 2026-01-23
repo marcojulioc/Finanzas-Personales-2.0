@@ -8,6 +8,7 @@ import {
   Landmark,
   CreditCard,
   Receipt,
+  PiggyBank,
   LogOut,
   Moon,
   Sun,
@@ -37,6 +38,7 @@ const navItems = [
   { href: '/accounts', label: 'Cuentas', icon: Landmark },
   { href: '/cards', label: 'Tarjetas', icon: CreditCard },
   { href: '/transactions', label: 'Transacciones', icon: Receipt },
+  { href: '/budgets', label: 'Presupuestos', icon: PiggyBank },
 ]
 
 export function DashboardNav({ user }: DashboardNavProps) {

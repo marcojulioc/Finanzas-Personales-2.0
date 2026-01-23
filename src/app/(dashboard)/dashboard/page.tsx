@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { Decimal } from '@prisma/client/runtime/library'
 import {
   Card,
   CardContent,
@@ -10,13 +11,22 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Landmark, CreditCard, TrendingUp, TrendingDown, Plus, Receipt, ArrowRight } from 'lucide-react'
+import { Landmark, CreditCard, TrendingUp, TrendingDown, Plus, Receipt, ArrowRight, Wallet } from 'lucide-react'
 import { getCategoryById } from '@/lib/categories'
 import { getCardAlerts } from '@/lib/card-alerts'
 import { CardAlerts } from '@/components/card-alerts'
+import { formatCurrency } from '@/lib/utils' // Import from utils
+import { Progress } from '@/components/ui/progress' // Import Progress for budget cards
+import { Separator } from '@/components/ui/separator'
+
 
 async function getDashboardData(userId: string) {
-  const [bankAccounts, creditCards, recentTransactions] = await Promise.all([
+  // Obtener el primer día del mes actual (GMT para consistencia)
+  const now = new Date();
+  const currentMonthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+  const nextMonthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1));
+
+  const [bankAccounts, creditCards, recentTransactions, budgets, expenseTransactions] = await Promise.all([
     db.bankAccount.findMany({
       where: { userId, isActive: true },
       orderBy: { createdAt: 'asc' },
@@ -32,6 +42,24 @@ async function getDashboardData(userId: string) {
       include: {
         bankAccount: { select: { name: true, color: true } },
         creditCard: { select: { name: true, color: true } },
+      },
+    }),
+    db.budget.findMany({
+      where: { userId, month: currentMonthStart },
+      orderBy: { createdAt: 'asc' },
+    }),
+    db.transaction.findMany({
+      where: {
+        userId,
+        type: 'expense',
+        date: {
+          gte: currentMonthStart,
+          lt: nextMonthStart,
+        },
+      },
+      select: {
+        category: true,
+        amount: true,
       },
     }),
   ])
@@ -61,6 +89,31 @@ async function getDashboardData(userId: string) {
     }))
   )
 
+  // Calcular el gasto total por categoría para presupuestos
+  const spendingByCategory = expenseTransactions.reduce((acc, transaction) => {
+    const category = transaction.category;
+    const amount = new Decimal(transaction.amount);
+    
+    if (acc[category]) {
+      acc[category] = new Decimal(acc[category]).plus(amount);
+    } else {
+      acc[category] = amount;
+    }
+    return acc;
+  }, {} as Record<string, Decimal>);
+
+  // Combinar presupuestos con el gasto calculado
+  const budgetsWithSpending = budgets.map((budget) => {
+    const spent = spendingByCategory[budget.category] || new Decimal(0);
+    return {
+      id: budget.id,
+      category: budget.category,
+      amount: budget.amount.toNumber(),
+      month: budget.month,
+      spent: spent.toNumber(),
+    };
+  });
+
   return {
     bankAccounts,
     creditCards,
@@ -69,14 +122,8 @@ async function getDashboardData(userId: string) {
     totalBalanceMXN,
     totalDebtMXN,
     netBalance: totalBalanceMXN - totalDebtMXN,
+    budgetsWithSpending, // Add budgets to the returned data
   }
-}
-
-function formatCurrency(amount: number, currency = 'MXN') {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency,
-  }).format(amount)
 }
 
 function formatDate(date: Date) {
@@ -90,8 +137,12 @@ export default async function DashboardPage() {
   const session = await auth()
   if (!session?.user?.id) return null
 
-  const { bankAccounts, creditCards, recentTransactions, cardAlerts, totalBalanceMXN, totalDebtMXN, netBalance } =
+  const { bankAccounts, creditCards, recentTransactions, cardAlerts, totalBalanceMXN, totalDebtMXN, netBalance, budgetsWithSpending } =
     await getDashboardData(session.user.id)
+
+  const totalBudgeted = budgetsWithSpending.reduce((sum, budget) => sum + budget.amount, 0);
+  const totalSpentOnBudgets = budgetsWithSpending.reduce((sum, budget) => sum + budget.spent, 0);
+
 
   return (
     <div className="space-y-8">
@@ -174,6 +225,74 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Sección de Presupuestos */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-purple-500" />
+              <CardTitle>Mis Presupuestos</CardTitle>
+            </div>
+            <Link href="/dashboard/budgets">
+              <Button variant="ghost" size="sm">
+                Ver todos
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
+          </div>
+          <CardDescription>Resumen de tus límites de gasto para este mes.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {budgetsWithSpending.length === 0 ? (
+            <div className="text-center py-4">
+              <Wallet className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">No hay presupuestos definidos para este mes.</p>
+              <Link href="/dashboard/budgets">
+                <Button variant="outline" size="sm" className="mt-2">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Crear primer presupuesto
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+                <div className="flex justify-between items-center text-sm font-medium">
+                    <span>Total Presupuestado:</span>
+                    <span>{formatCurrency(totalBudgeted)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium">
+                    <span>Total Gastado:</span>
+                    <span className={totalSpentOnBudgets > totalBudgeted ? "text-danger" : "text-success"}>
+                      {formatCurrency(totalSpentOnBudgets)}
+                    </span>
+                </div>
+                <Separator />
+              {budgetsWithSpending.map((budget) => {
+                const category = getCategoryById(budget.category);
+                const progressValue = (budget.spent / budget.amount) * 100;
+                const progressColor = progressValue >= 100 ? "bg-destructive" : progressValue >= 80 ? "bg-amber-500" : "bg-primary";
+
+                return (
+                  <div key={budget.id} className="grid grid-cols-4 items-center gap-2 py-2">
+                    <div className="col-span-1 flex items-center gap-2 text-sm font-medium">
+                      {category?.icon} {category?.name || budget.category}
+                    </div>
+                    <div className="col-span-3 space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>{formatCurrency(budget.spent)} / {formatCurrency(budget.amount)}</span>
+                        <span>{progressValue.toFixed(0)}%</span>
+                      </div>
+                      <Progress value={progressValue} className="h-2" indicatorColor={progressColor} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
 
       {/* Cuentas y Tarjetas */}
       <div className="grid gap-6 md:grid-cols-2">
