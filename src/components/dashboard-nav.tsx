@@ -14,6 +14,7 @@ import {
   LogOut,
   Moon,
   Sun,
+  Tags,
 } from 'lucide-react'
 import { NotificationBell } from '@/components/notification-bell'
 import { useTheme } from 'next-themes'
@@ -117,6 +118,13 @@ export function DashboardNav({ user }: DashboardNavProps) {
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
               </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/categories" className="cursor-pointer">
+                  <Tags className="mr-2 h-4 w-4" />
+                  Categorias
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-danger cursor-pointer"

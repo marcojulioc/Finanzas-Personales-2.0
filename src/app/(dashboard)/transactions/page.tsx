@@ -51,12 +51,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
-import {
-  getCategoryById,
-  getCategoriesByType,
-  EXPENSE_CATEGORIES,
-  INCOME_CATEGORIES,
-} from '@/lib/categories'
+import { getCategoryById, type Category } from '@/lib/categories'
 
 interface BankAccount {
   id: string
@@ -119,6 +114,7 @@ export default function TransactionsPage() {
   })
   const [accounts, setAccounts] = useState<BankAccount[]>([])
   const [cards, setCards] = useState<CreditCardData[]>([])
+  const [userCategories, setUserCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -172,18 +168,21 @@ export default function TransactionsPage() {
 
   const fetchAccountsAndCards = async () => {
     try {
-      const [accountsRes, cardsRes] = await Promise.all([
+      const [accountsRes, cardsRes, categoriesRes] = await Promise.all([
         fetch('/api/accounts'),
         fetch('/api/cards'),
+        fetch('/api/categories'),
       ])
-      const [accountsData, cardsData] = await Promise.all([
+      const [accountsData, cardsData, categoriesData] = await Promise.all([
         accountsRes.json(),
         cardsRes.json(),
+        categoriesRes.json(),
       ])
       setAccounts(accountsData.data || [])
       setCards(cardsData.data || [])
+      setUserCategories(categoriesData.data || [])
     } catch (error) {
-      console.error('Error fetching accounts/cards:', error)
+      console.error('Error fetching accounts/cards/categories:', error)
     }
   }
 
@@ -325,7 +324,9 @@ export default function TransactionsPage() {
     })
   }
 
-  const categories = watchType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES
+  const expenseCategories = userCategories.filter((c) => c.type === 'expense')
+  const incomeCategories = userCategories.filter((c) => c.type === 'income')
+  const categories = watchType === 'expense' ? expenseCategories : incomeCategories
 
   if (isLoading) {
     return (
@@ -377,8 +378,8 @@ export default function TransactionsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas</SelectItem>
-                {[...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES].map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
+                {userCategories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.name}>
                     {cat.icon} {cat.name}
                   </SelectItem>
                 ))}
@@ -695,7 +696,7 @@ export default function TransactionsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
+                    <SelectItem key={cat.id} value={cat.name}>
                       {cat.icon} {cat.name}
                     </SelectItem>
                   ))}

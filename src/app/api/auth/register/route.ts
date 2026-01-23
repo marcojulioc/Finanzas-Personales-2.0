@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { registerSchema } from '@/lib/validations'
+import { seedUserCategories } from '@/lib/categories'
 
 export async function POST(request: Request) {
   try {
@@ -59,6 +60,9 @@ export async function POST(request: Request) {
         createdAt: true,
       },
     })
+
+    // Crear categorias por defecto para el usuario
+    await seedUserCategories(user.id)
 
     return NextResponse.json(
       {

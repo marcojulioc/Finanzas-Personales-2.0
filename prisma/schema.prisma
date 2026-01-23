@@ -100,6 +100,7 @@ model User {
   budgets Budget[]
   recurringTransactions RecurringTransaction[]
   notifications Notification[]
+  categories Category[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -266,4 +267,23 @@ model Notification {
 
   @@index([userId, isRead])
   @@index([userId, createdAt])
+}
+
+model Category {
+  id        String          @id @default(cuid())
+  userId    String
+  name      String          @db.VarChar(30)
+  icon      String          @db.VarChar(10)
+  color     String          @db.VarChar(7)
+  type      TransactionType
+  isDefault Boolean         @default(false) // Categorias del sistema
+  isActive  Boolean         @default(true)
+
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@unique([userId, name, type])
+  @@index([userId, type, isActive])
 }

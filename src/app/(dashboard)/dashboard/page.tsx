@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Landmark, CreditCard, TrendingUp, TrendingDown, Plus, Receipt, ArrowRight, Wallet, Repeat } from 'lucide-react'
-import { getCategoryById } from '@/lib/categories'
+import { getCategoryById, seedUserCategories } from '@/lib/categories'
 import { getCardAlerts } from '@/lib/card-alerts'
 import { CardAlerts } from '@/components/card-alerts'
 import { formatCurrency } from '@/lib/utils'
@@ -28,6 +28,9 @@ async function getDashboardData(userId: string) {
 
   // Generate notifications for the user
   await generateAllNotifications(userId)
+
+  // Seed default categories for existing users (runs only if they have no categories)
+  await seedUserCategories(userId)
 
   // Obtener el primer día del mes actual (GMT para consistencia)
   const now = new Date();

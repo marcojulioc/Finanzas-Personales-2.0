@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -21,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { EXPENSE_CATEGORIES } from '@/lib/categories'
+import type { Category } from '@/lib/categories'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
@@ -67,6 +68,20 @@ function getMonthOptions(): { value: string; label: string }[] {
 export function BudgetForm({ initialData, selectedMonth, onSuccess, onCancel }: BudgetFormProps) {
   const router = useRouter();
   const monthOptions = getMonthOptions();
+  const [categories, setCategories] = useState<Category[]>([])
+
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const res = await fetch('/api/categories?type=expense')
+        const data = await res.json()
+        setCategories(data.data || [])
+      } catch (error) {
+        console.error('Error fetching categories:', error)
+      }
+    }
+    fetchCategories()
+  }, [])
 
   // Determine default month: selectedMonth prop > initialData > current month
   const getDefaultMonth = () => {
@@ -87,7 +102,7 @@ export function BudgetForm({ initialData, selectedMonth, onSuccess, onCancel }: 
       ...initialData,
       month: getDefaultMonth(),
     } : {
-      category: EXPENSE_CATEGORIES[0]?.id || '',
+      category: '',
       amount: 0,
       month: getDefaultMonth(),
     },
@@ -144,8 +159,8 @@ export function BudgetForm({ initialData, selectedMonth, onSuccess, onCancel }: 
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {EXPENSE_CATEGORIES.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.name}>
                       {category.icon} {category.name}
                     </SelectItem>
                   ))}

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -16,10 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  EXPENSE_CATEGORIES,
-  INCOME_CATEGORIES,
-} from '@/lib/categories'
+import type { Category } from '@/lib/categories'
 
 interface BankAccount {
   id: string
@@ -90,6 +88,21 @@ export function RecurringForm({
   onSuccess,
   onCancel,
 }: RecurringFormProps) {
+  const [userCategories, setUserCategories] = useState<Category[]>([])
+
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const res = await fetch('/api/categories')
+        const data = await res.json()
+        setUserCategories(data.data || [])
+      } catch (error) {
+        console.error('Error fetching categories:', error)
+      }
+    }
+    fetchCategories()
+  }, [])
+
   const getInitialSourceType = () => {
     if (initialData?.bankAccountId) return 'account'
     if (initialData?.creditCardId) return 'card'
@@ -129,7 +142,9 @@ export function RecurringForm({
   const watchSourceType = watch('sourceType')
   const watchIsCardPayment = watch('isCardPayment')
 
-  const categories = watchType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES
+  const expenseCategories = userCategories.filter((c) => c.type === 'expense')
+  const incomeCategories = userCategories.filter((c) => c.type === 'income')
+  const categories = watchType === 'expense' ? expenseCategories : incomeCategories
 
   const onSubmit = async (data: RecurringFormData) => {
     try {
@@ -327,7 +342,7 @@ export function RecurringForm({
           </SelectTrigger>
           <SelectContent>
             {categories.map((cat) => (
-              <SelectItem key={cat.id} value={cat.id}>
+              <SelectItem key={cat.id} value={cat.name}>
                 {cat.icon} {cat.name}
               </SelectItem>
             ))}
