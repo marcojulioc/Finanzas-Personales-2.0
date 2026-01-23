@@ -43,13 +43,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { COMMON_BANKS, ACCOUNT_COLORS } from '@/lib/onboarding-store'
+import { useUserCurrencies } from '@/hooks/use-user-currencies'
 
 interface BankAccount {
   id: string
   name: string
   bankName: string
   accountType: 'savings' | 'checking'
-  currency: 'MXN' | 'USD'
+  currency: string
   balance: number
   color: string | null
   isActive: boolean
@@ -59,7 +60,7 @@ const accountSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
   bankName: z.string().min(1, 'Selecciona un banco'),
   accountType: z.enum(['savings', 'checking']),
-  currency: z.enum(['MXN', 'USD']),
+  currency: z.string().min(1, 'Selecciona una moneda'),
   balance: z.number().min(0, 'El balance no puede ser negativo'),
   color: z.string().optional(),
 })
@@ -75,6 +76,9 @@ export default function AccountsPage() {
   const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null)
   const [selectedColor, setSelectedColor] = useState<string>(ACCOUNT_COLORS[0])
 
+  // User currencies
+  const { currencyOptions, primaryCurrency } = useUserCurrencies()
+
   const {
     register,
     handleSubmit,
@@ -86,7 +90,7 @@ export default function AccountsPage() {
     resolver: zodResolver(accountSchema),
     defaultValues: {
       accountType: 'savings',
-      currency: 'MXN',
+      currency: primaryCurrency || 'USD',
       balance: 0,
     },
   })
@@ -116,7 +120,7 @@ export default function AccountsPage() {
       name: '',
       bankName: '',
       accountType: 'savings',
-      currency: 'MXN',
+      currency: primaryCurrency || 'USD',
       balance: 0,
     })
     setIsDialogOpen(true)
@@ -389,16 +393,17 @@ export default function AccountsPage() {
                 <Label>Moneda</Label>
                 <Select
                   value={watch('currency')}
-                  onValueChange={(value: 'MXN' | 'USD') =>
-                    setValue('currency', value)
-                  }
+                  onValueChange={(value) => setValue('currency', value)}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MXN">Pesos (MXN)</SelectItem>
-                    <SelectItem value="USD">Dólares (USD)</SelectItem>
+                    {currencyOptions.map((currency) => (
+                      <SelectItem key={currency.code} value={currency.code}>
+                        {currency.flag} {currency.name} ({currency.code})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

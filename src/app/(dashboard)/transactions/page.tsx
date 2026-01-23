@@ -52,6 +52,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { getCategoryById, type Category } from '@/lib/categories'
+import { useUserCurrencies } from '@/hooks/use-user-currencies'
+import { CURRENCIES } from '@/lib/currencies'
 
 interface BankAccount {
   id: string
@@ -69,7 +71,7 @@ interface Transaction {
   id: string
   type: 'income' | 'expense'
   amount: number
-  currency: 'MXN' | 'USD'
+  currency: string
   category: string
   description: string | null
   date: string
@@ -91,7 +93,7 @@ interface Pagination {
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense']),
   amount: z.number().positive('El monto debe ser mayor a 0'),
-  currency: z.enum(['MXN', 'USD']),
+  currency: z.string().min(1, 'Selecciona una moneda'),
   category: z.string().min(1, 'Selecciona una categoría'),
   description: z.string().max(100).optional(),
   date: z.string().min(1, 'Selecciona una fecha'),
@@ -121,6 +123,9 @@ export default function TransactionsPage() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null)
 
+  // User currencies
+  const { currencyOptions, primaryCurrency } = useUserCurrencies()
+
   // Filtros
   const [filterType, setFilterType] = useState<string>('all')
   const [filterCategory, setFilterCategory] = useState<string>('all')
@@ -136,7 +141,7 @@ export default function TransactionsPage() {
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       type: 'expense',
-      currency: 'MXN',
+      currency: primaryCurrency || 'USD',
       sourceType: 'account',
       isCardPayment: false,
       date: new Date().toISOString().split('T')[0],
@@ -200,7 +205,7 @@ export default function TransactionsPage() {
     reset({
       type: 'expense',
       amount: undefined,
-      currency: 'MXN',
+      currency: primaryCurrency || 'USD',
       category: '',
       description: '',
       date: new Date().toISOString().split('T')[0],
@@ -669,16 +674,17 @@ export default function TransactionsPage() {
                 <Label>Moneda</Label>
                 <Select
                   value={watch('currency')}
-                  onValueChange={(value: 'MXN' | 'USD') =>
-                    setValue('currency', value)
-                  }
+                  onValueChange={(value) => setValue('currency', value)}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MXN">MXN</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
+                    {currencyOptions.map((currency) => (
+                      <SelectItem key={currency.code} value={currency.code}>
+                        {currency.flag} {currency.code}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

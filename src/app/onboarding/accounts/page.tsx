@@ -33,12 +33,13 @@ import {
   ACCOUNT_COLORS,
   type BankAccountDraft,
 } from '@/lib/onboarding-store'
+import { useUserCurrencies } from '@/hooks/use-user-currencies'
 
 const accountSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
   bankName: z.string().min(1, 'Selecciona un banco'),
   accountType: z.enum(['savings', 'checking']),
-  currency: z.enum(['MXN', 'USD']),
+  currency: z.string().min(1, 'Selecciona una moneda'),
   balance: z.number().min(0, 'El balance no puede ser negativo'),
 })
 
@@ -49,6 +50,7 @@ export default function OnboardingAccountsPage() {
   const [accounts, setAccounts] = useState<BankAccountDraft[]>([])
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const { currencyOptions, primaryCurrency } = useUserCurrencies()
 
   const {
     register,
@@ -61,7 +63,7 @@ export default function OnboardingAccountsPage() {
     resolver: zodResolver(accountSchema),
     defaultValues: {
       accountType: 'savings',
-      currency: 'MXN',
+      currency: primaryCurrency || 'USD',
       balance: 0,
     },
   })
@@ -103,7 +105,7 @@ export default function OnboardingAccountsPage() {
       name: '',
       bankName: '',
       accountType: 'savings',
-      currency: 'MXN',
+      currency: primaryCurrency || 'USD',
       balance: 0,
     })
   }
@@ -136,7 +138,7 @@ export default function OnboardingAccountsPage() {
   }
 
   const handleBack = () => {
-    router.push('/onboarding')
+    router.push('/onboarding/currencies')
   }
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -269,16 +271,17 @@ export default function OnboardingAccountsPage() {
                 <Label>Moneda</Label>
                 <Select
                   value={watch('currency')}
-                  onValueChange={(value: 'MXN' | 'USD') =>
-                    setValue('currency', value)
-                  }
+                  onValueChange={(value) => setValue('currency', value)}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MXN">Pesos (MXN)</SelectItem>
-                    <SelectItem value="USD">Dólares (USD)</SelectItem>
+                    {currencyOptions.map((currency) => (
+                      <SelectItem key={currency.code} value={currency.code}>
+                        {currency.flag} {currency.name} ({currency.code})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

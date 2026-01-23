@@ -4,7 +4,7 @@ export interface BankAccountDraft {
   name: string
   bankName: string
   accountType: 'savings' | 'checking'
-  currency: 'MXN' | 'USD'
+  currency: string
   balance: number
   color?: string
 }
@@ -103,8 +103,21 @@ export function generateId(): string {
   return `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 }
 
-// Bancos comunes de México
+// Bancos comunes (República Dominicana, México y otros)
 export const COMMON_BANKS = [
+  // República Dominicana
+  'Banco Popular',
+  'Banreservas',
+  'BHD León',
+  'Scotiabank RD',
+  'Banco Santa Cruz',
+  'Banco BDI',
+  'Banco Caribe',
+  'Banco López de Haro',
+  'Banco Vimenca',
+  'Asociación Popular',
+  'Banco Promerica',
+  // México
   'BBVA',
   'Santander',
   'Banorte',
@@ -117,6 +130,7 @@ export const COMMON_BANKS = [
   'Banregio',
   'Hey Banco',
   'Nu',
+  // Otros
   'Otro',
 ] as const
 

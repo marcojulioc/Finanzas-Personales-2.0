@@ -14,8 +14,38 @@ enum AccountType {
 }
 
 enum Currency {
-  MXN
-  USD
+  // Norteamerica
+  USD  // Dolar estadounidense
+  MXN  // Peso mexicano
+  CAD  // Dolar canadiense
+  // Caribe
+  DOP  // Peso dominicano
+  HTG  // Gourde haitiano
+  JMD  // Dolar jamaiquino
+  TTD  // Dolar de Trinidad y Tobago
+  BBD  // Dolar de Barbados
+  BSD  // Dolar bahames
+  CUP  // Peso cubano
+  // Centroamerica
+  GTQ  // Quetzal guatemalteco
+  HNL  // Lempira hondureno
+  NIO  // Cordoba nicaraguense
+  CRC  // Colon costarricense
+  PAB  // Balboa panameno
+  // Sudamerica
+  COP  // Peso colombiano
+  VES  // Bolivar venezolano
+  PEN  // Sol peruano
+  CLP  // Peso chileno
+  ARS  // Peso argentino
+  BRL  // Real brasileno
+  UYU  // Peso uruguayo
+  PYG  // Guarani paraguayo
+  BOB  // Boliviano
+  // Europa
+  EUR  // Euro
+  GBP  // Libra esterlina
+  CHF  // Franco suizo
 }
 
 enum TransactionType {
@@ -88,6 +118,10 @@ model User {
   image               String?
   emailVerified       DateTime?
   onboardingCompleted Boolean       @default(false)
+
+  // Currency preferences
+  primaryCurrency     Currency      @default(USD)
+  currencies          Currency[]    @default([USD])
 
   // NextAuth relations
   accounts Account[]

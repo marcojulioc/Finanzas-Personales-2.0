@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 
 const steps = [
   { path: '/onboarding', label: 'Bienvenida' },
+  { path: '/onboarding/currencies', label: 'Monedas' },
   { path: '/onboarding/accounts', label: 'Cuentas' },
   { path: '/onboarding/cards', label: 'Tarjetas' },
   { path: '/onboarding/summary', label: 'Confirmar' },

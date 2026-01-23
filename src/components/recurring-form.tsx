@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { Category } from '@/lib/categories'
+import { useUserCurrencies } from '@/hooks/use-user-currencies'
 
 interface BankAccount {
   id: string
@@ -35,7 +36,7 @@ interface RecurringTransaction {
   id: string
   type: 'income' | 'expense'
   amount: number
-  currency: 'MXN' | 'USD'
+  currency: string
   category: string
   description: string | null
   frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly'
@@ -58,7 +59,7 @@ interface RecurringFormProps {
 const recurringFormSchema = z.object({
   type: z.enum(['income', 'expense']),
   amount: z.number().positive('El monto debe ser mayor a 0'),
-  currency: z.enum(['MXN', 'USD']),
+  currency: z.string().min(1, 'Selecciona una moneda'),
   category: z.string().min(1, 'Selecciona una categoría'),
   description: z.string().max(100).optional(),
   frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'yearly']),
@@ -89,6 +90,7 @@ export function RecurringForm({
   onCancel,
 }: RecurringFormProps) {
   const [userCategories, setUserCategories] = useState<Category[]>([])
+  const { currencyOptions, primaryCurrency } = useUserCurrencies()
 
   useEffect(() => {
     async function fetchCategories() {
@@ -120,7 +122,7 @@ export function RecurringForm({
     defaultValues: {
       type: initialData?.type || 'expense',
       amount: initialData ? Number(initialData.amount) : undefined,
-      currency: initialData?.currency || 'MXN',
+      currency: initialData?.currency || primaryCurrency || 'USD',
       category: initialData?.category || '',
       description: initialData?.description || '',
       frequency: initialData?.frequency || 'monthly',
@@ -317,14 +319,17 @@ export function RecurringForm({
           <Label>Moneda</Label>
           <Select
             value={watch('currency')}
-            onValueChange={(value: 'MXN' | 'USD') => setValue('currency', value)}
+            onValueChange={(value) => setValue('currency', value)}
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="MXN">MXN</SelectItem>
-              <SelectItem value="USD">USD</SelectItem>
+              {currencyOptions.map((currency) => (
+                <SelectItem key={currency.code} value={currency.code}>
+                  {currency.flag} {currency.code}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

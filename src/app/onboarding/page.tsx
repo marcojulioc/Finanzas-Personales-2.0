@@ -25,8 +25,8 @@ export default function OnboardingWelcomePage() {
           ¡Bienvenido a Finanzas!
         </CardTitle>
         <CardDescription className="text-base mt-2">
-          Antes de comenzar, configuremos tus cuentas y tarjetas para que tengas
-          una visión real de tus finanzas desde el primer día.
+          Antes de comenzar, configuremos tus monedas, cuentas y tarjetas para
+          que tengas una visión real de tus finanzas desde el primer día.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -34,6 +34,17 @@ export default function OnboardingWelcomePage() {
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
               <span className="text-success font-medium">1</span>
+            </div>
+            <div>
+              <p className="font-medium">Selecciona tus monedas</p>
+              <p className="text-sm text-muted-foreground">
+                Elige las monedas que usas en tu día a día
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
+              <span className="text-success font-medium">2</span>
             </div>
             <div>
               <p className="font-medium">Agrega tus cuentas bancarias</p>
@@ -44,7 +55,7 @@ export default function OnboardingWelcomePage() {
           </div>
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
-              <span className="text-success font-medium">2</span>
+              <span className="text-success font-medium">3</span>
             </div>
             <div>
               <p className="font-medium">Agrega tus tarjetas de crédito</p>
@@ -55,7 +66,7 @@ export default function OnboardingWelcomePage() {
           </div>
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
-              <span className="text-success font-medium">3</span>
+              <span className="text-success font-medium">4</span>
             </div>
             <div>
               <p className="font-medium">Confirma y comienza</p>
@@ -69,7 +80,7 @@ export default function OnboardingWelcomePage() {
         <Button
           size="lg"
           className="w-full sm:w-auto"
-          onClick={() => router.push('/onboarding/accounts')}
+          onClick={() => router.push('/onboarding/currencies')}
         >
           Comenzar
           <ArrowRight className="ml-2 h-4 w-4" />
