@@ -23,6 +23,14 @@ enum TransactionType {
   expense
 }
 
+enum RecurringFrequency {
+  daily
+  weekly
+  biweekly
+  monthly
+  yearly
+}
+
 // NextAuth.js Models
 model Account {
   id                String  @id @default(cuid())
@@ -81,6 +89,8 @@ model User {
   bankAccounts BankAccount[]
   creditCards  CreditCard[]
   transactions Transaction[]
+  budgets Budget[]
+  recurringTransactions RecurringTransaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -101,6 +111,7 @@ model BankAccount {
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
+  recurringTransactions RecurringTransaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -125,6 +136,8 @@ model CreditCard {
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions     Transaction[] @relation("CardTransactions")
   paymentsReceived Transaction[] @relation("CardPayments")
+  recurringTransactions RecurringTransaction[] @relation("RecurringCardTransactions")
+  recurringPayments     RecurringTransaction[] @relation("RecurringCardPayments")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -155,6 +168,10 @@ model Transaction {
   targetCardId  String?
   targetCard    CreditCard? @relation("CardPayments", fields: [targetCardId], references: [id])
 
+  // Para transacciones generadas automáticamente
+  recurringTransactionId String?
+  recurringTransaction   RecurringTransaction? @relation("GeneratedFromRecurring", fields: [recurringTransactionId], references: [id])
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
@@ -163,4 +180,64 @@ model Transaction {
   @@index([userId, date])
   @@index([bankAccountId])
   @@index([creditCardId])
+  @@index([recurringTransactionId])
+}
+
+// Nuevo modelo para Presupuestos
+model Budget {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  category  String   // Ej: "Alimentación", "Transporte"
+  amount    Decimal  @db.Decimal(12, 2) // Límite del presupuesto
+  
+  // Para esta primera versión, todos los presupuestos serán mensuales
+  // Representamos el mes como el primer día de ese mes.
+  // Ej: '2026-02-01' para el presupuesto de Febrero 2026.
+  month     DateTime @db.Date 
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Un usuario solo puede tener un presupuesto por categoría y mes
+  @@unique([userId, category, month])
+  @@index([userId])
+}
+
+model RecurringTransaction {
+  id                String              @id @default(cuid())
+  userId            String
+
+  // Campos de transacción (igual que Transaction)
+  type              TransactionType
+  amount            Decimal             @db.Decimal(12, 2)
+  currency          Currency
+  category          String              @db.VarChar(30)
+  description       String?             @db.VarChar(100)
+  bankAccountId     String?
+  creditCardId      String?
+  isCardPayment     Boolean             @default(false)
+  targetCardId      String?
+
+  // Campos específicos de recurrencia
+  frequency         RecurringFrequency
+  startDate         DateTime            @db.Date
+  endDate           DateTime?           @db.Date
+  lastGeneratedDate DateTime?           @db.Date
+  nextDueDate       DateTime            @db.Date
+  isActive          Boolean             @default(true)
+
+  // Relaciones
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankAccount       BankAccount?        @relation(fields: [bankAccountId], references: [id])
+  creditCard        CreditCard?         @relation("RecurringCardTransactions", fields: [creditCardId], references: [id])
+  targetCard        CreditCard?         @relation("RecurringCardPayments", fields: [targetCardId], references: [id])
+  generatedTransactions Transaction[]   @relation("GeneratedFromRecurring")
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([userId, isActive])
+  @@index([userId, nextDueDate])
 }

@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 // Autenticación
 export const loginSchema = z.object({
-  email: z.email('Email inválido'),
+  email: z.string().email('Email inválido'),
   password: z.string().min(1, 'La contraseña es requerida'),
 })
 
@@ -11,7 +11,7 @@ export const registerSchema = z.object({
     .string()
     .min(2, 'El nombre debe tener al menos 2 caracteres')
     .max(50, 'El nombre no puede exceder 50 caracteres'),
-  email: z.email('Email inválido'),
+  email: z.string().email('Email inválido'),
   password: z
     .string()
     .min(8, 'La contraseña debe tener al menos 8 caracteres')
@@ -101,9 +101,49 @@ export const transactionSchema = z.object({
   targetCardId: z.string().cuid().optional(),
 })
 
+// Presupuestos
+export const budgetSchema = z.object({
+  category: z
+    .string()
+    .min(1, 'La categoría es requerida')
+    .max(50, 'La categoría no puede exceder 50 caracteres'),
+  amount: z.number().positive('El monto debe ser mayor a 0'),
+  month: z.coerce.date(), // Represented as the first day of the month
+})
+
+// Transacciones recurrentes
+export const recurringTransactionSchema = z.object({
+  type: z.enum(['income', 'expense'], {
+    message: 'Tipo de transacción inválido',
+  }),
+  amount: z.number().positive('El monto debe ser mayor a 0'),
+  currency: z.enum(['MXN', 'USD'], {
+    message: 'Moneda inválida',
+  }),
+  category: z
+    .string()
+    .min(1, 'La categoría es requerida')
+    .max(30, 'La categoría no puede exceder 30 caracteres'),
+  description: z
+    .string()
+    .max(100, 'La descripción no puede exceder 100 caracteres')
+    .optional(),
+  bankAccountId: z.string().cuid().optional(),
+  creditCardId: z.string().cuid().optional(),
+  isCardPayment: z.boolean().default(false),
+  targetCardId: z.string().cuid().optional(),
+  frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'yearly'], {
+    message: 'Frecuencia inválida',
+  }),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date().optional(),
+})
+
 // Tipos inferidos
 export type LoginInput = z.infer<typeof loginSchema>
 export type RegisterInput = z.infer<typeof registerSchema>
 export type BankAccountInput = z.infer<typeof bankAccountSchema>
 export type CreditCardInput = z.infer<typeof creditCardSchema>
 export type TransactionInput = z.infer<typeof transactionSchema>
+export type BudgetInput = z.infer<typeof budgetSchema>
+export type RecurringTransactionInput = z.infer<typeof recurringTransactionSchema>

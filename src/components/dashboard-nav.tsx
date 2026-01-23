@@ -10,6 +10,7 @@ import {
   Receipt,
   PiggyBank,
   BarChart3,
+  Repeat,
   LogOut,
   Moon,
   Sun,
@@ -39,6 +40,7 @@ const navItems = [
   { href: '/accounts', label: 'Cuentas', icon: Landmark },
   { href: '/cards', label: 'Tarjetas', icon: CreditCard },
   { href: '/transactions', label: 'Transacciones', icon: Receipt },
+  { href: '/recurring', label: 'Recurrentes', icon: Repeat },
   { href: '/budgets', label: 'Presupuestos', icon: PiggyBank },
   { href: '/reports', label: 'Reportes', icon: BarChart3 },
 ]

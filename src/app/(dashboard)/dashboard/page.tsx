@@ -11,22 +11,26 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Landmark, CreditCard, TrendingUp, TrendingDown, Plus, Receipt, ArrowRight, Wallet } from 'lucide-react'
+import { Landmark, CreditCard, TrendingUp, TrendingDown, Plus, Receipt, ArrowRight, Wallet, Repeat } from 'lucide-react'
 import { getCategoryById } from '@/lib/categories'
 import { getCardAlerts } from '@/lib/card-alerts'
 import { CardAlerts } from '@/components/card-alerts'
-import { formatCurrency } from '@/lib/utils' // Import from utils
-import { Progress } from '@/components/ui/progress' // Import Progress for budget cards
+import { formatCurrency } from '@/lib/utils'
+import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
+import { generatePendingTransactions, getUpcomingRecurring, FREQUENCY_LABELS } from '@/lib/recurring-utils'
 
 
 async function getDashboardData(userId: string) {
+  // Generate pending recurring transactions first
+  await generatePendingTransactions(userId)
+
   // Obtener el primer día del mes actual (GMT para consistencia)
   const now = new Date();
   const currentMonthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
   const nextMonthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1));
 
-  const [bankAccounts, creditCards, recentTransactions, budgets, expenseTransactions] = await Promise.all([
+  const [bankAccounts, creditCards, recentTransactions, budgets, expenseTransactions, upcomingRecurring] = await Promise.all([
     db.bankAccount.findMany({
       where: { userId, isActive: true },
       orderBy: { createdAt: 'asc' },
@@ -62,6 +66,7 @@ async function getDashboardData(userId: string) {
         amount: true,
       },
     }),
+    getUpcomingRecurring(userId, 7, 5),
   ])
 
   // Calcular totales (asumiendo tipo de cambio aproximado)
@@ -122,7 +127,8 @@ async function getDashboardData(userId: string) {
     totalBalanceMXN,
     totalDebtMXN,
     netBalance: totalBalanceMXN - totalDebtMXN,
-    budgetsWithSpending, // Add budgets to the returned data
+    budgetsWithSpending,
+    upcomingRecurring,
   }
 }
 
@@ -137,7 +143,7 @@ export default async function DashboardPage() {
   const session = await auth()
   if (!session?.user?.id) return null
 
-  const { bankAccounts, creditCards, recentTransactions, cardAlerts, totalBalanceMXN, totalDebtMXN, netBalance, budgetsWithSpending } =
+  const { bankAccounts, creditCards, recentTransactions, cardAlerts, totalBalanceMXN, totalDebtMXN, netBalance, budgetsWithSpending, upcomingRecurring } =
     await getDashboardData(session.user.id)
 
   const totalBudgeted = budgetsWithSpending.reduce((sum, budget) => sum + budget.amount, 0);
@@ -293,6 +299,71 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
+
+      {/* Próximas Recurrentes */}
+      {upcomingRecurring.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Repeat className="h-5 w-5 text-blue-500" />
+                <CardTitle>Próximas Recurrentes</CardTitle>
+              </div>
+              <Link href="/recurring">
+                <Button variant="ghost" size="sm">
+                  Ver todas
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
+            <CardDescription>Transacciones programadas para los próximos 7 días</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {upcomingRecurring.map((recurring) => {
+                const category = getCategoryById(recurring.category)
+                return (
+                  <div
+                    key={recurring.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center text-base"
+                        style={{
+                          backgroundColor: `${category?.color || '#6b7280'}20`,
+                        }}
+                      >
+                        {category?.icon || '❓'}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">
+                          {category?.name || recurring.category}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{formatDate(recurring.nextDueDate)}</span>
+                          <span>•</span>
+                          <span>{FREQUENCY_LABELS[recurring.frequency]}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span
+                      className={`font-mono font-medium ${
+                        recurring.type === 'income'
+                          ? 'text-success'
+                          : 'text-danger'
+                      }`}
+                    >
+                      {recurring.type === 'income' ? '+' : '-'}
+                      {formatCurrency(Number(recurring.amount), recurring.currency)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cuentas y Tarjetas */}
       <div className="grid gap-6 md:grid-cols-2">
