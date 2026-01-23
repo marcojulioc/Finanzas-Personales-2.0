@@ -15,6 +15,7 @@ import {
   Moon,
   Sun,
 } from 'lucide-react'
+import { NotificationBell } from '@/components/notification-bell'
 import { useTheme } from 'next-themes'
 
 import { Button } from '@/components/ui/button'
@@ -95,6 +96,8 @@ export function DashboardNav({ user }: DashboardNavProps) {
             <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="sr-only">Cambiar tema</span>
           </Button>
+
+          <NotificationBell />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -19,11 +19,15 @@ import { formatCurrency } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { generatePendingTransactions, getUpcomingRecurring, FREQUENCY_LABELS } from '@/lib/recurring-utils'
+import { generateAllNotifications } from '@/lib/notification-utils'
 
 
 async function getDashboardData(userId: string) {
   // Generate pending recurring transactions first
   await generatePendingTransactions(userId)
+
+  // Generate notifications for the user
+  await generateAllNotifications(userId)
 
   // Obtener el primer día del mes actual (GMT para consistencia)
   const now = new Date();
