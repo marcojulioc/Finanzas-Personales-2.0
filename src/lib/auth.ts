@@ -59,30 +59,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           image: user.image,
+          onboardingCompleted: user.onboardingCompleted,
         }
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
+      // En login inicial, guardar datos del usuario
       if (user) {
         token.id = user.id
+        token.onboardingCompleted = (user as any).onboardingCompleted ?? false
+        console.log('JWT created for user:', user.id, 'onboarding:', token.onboardingCompleted)
       }
 
-      // Si se está actualizando la sesión explícitamente, usar el valor proporcionado
+      // Si se está actualizando la sesión explícitamente
       if (trigger === 'update' && session?.onboardingCompleted !== undefined) {
         console.log('JWT Update Triggered:', session.onboardingCompleted)
         token.onboardingCompleted = session.onboardingCompleted
-        return token
-      }
-
-      // Siempre sincronizar el estado de onboarding desde la BD para evitar loops
-      if (token.id) {
-        const dbUser = await db.user.findUnique({
-          where: { id: token.id as string },
-          select: { onboardingCompleted: true },
-        })
-        token.onboardingCompleted = dbUser?.onboardingCompleted ?? false
       }
 
       return token
