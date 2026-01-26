@@ -33,6 +33,7 @@ import {
   ACCOUNT_COLORS,
   type CreditCardDraft,
 } from '@/lib/onboarding-store'
+import { CURRENCIES } from '@/lib/currencies'
 
 const cardSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
@@ -52,6 +53,7 @@ export default function OnboardingCardsPage() {
   const [cards, setCards] = useState<CreditCardDraft[]>([])
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [primaryCurrency, setPrimaryCurrency] = useState<string>('MXN')
 
   const {
     register,
@@ -78,6 +80,16 @@ export default function OnboardingCardsPage() {
     if (state.creditCards.length === 0) {
       setIsAdding(true)
     }
+
+    // Obtener la moneda primaria del usuario
+    fetch('/api/user/currencies')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.data?.primaryCurrency) {
+          setPrimaryCurrency(data.data.primaryCurrency)
+        }
+      })
+      .catch(console.error)
   }, [])
 
   const onSubmit = (data: CardFormData) => {
@@ -158,6 +170,11 @@ export default function OnboardingCardsPage() {
     }).format(amount)
   }
 
+  const getPrimaryCurrencyLabel = () => {
+    const currency = CURRENCIES[primaryCurrency]
+    return currency ? `${currency.name} (${primaryCurrency})` : `Moneda local (${primaryCurrency})`
+  }
+
   const days = Array.from({ length: 31 }, (_, i) => i + 1)
 
   return (
@@ -219,17 +236,17 @@ export default function OnboardingCardsPage() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   {(card.limitMXN > 0 || card.balanceMXN > 0) && (
                     <div>
-                      <p className="text-muted-foreground">Pesos (MXN)</p>
+                      <p className="text-muted-foreground">{getPrimaryCurrencyLabel()}</p>
                       <p>
                         Deuda:{' '}
                         <span className="font-mono text-danger">
-                          {formatCurrency(card.balanceMXN, 'MXN')}
+                          {formatCurrency(card.balanceMXN, primaryCurrency)}
                         </span>
                       </p>
                       <p>
                         Límite:{' '}
                         <span className="font-mono">
-                          {formatCurrency(card.limitMXN, 'MXN')}
+                          {formatCurrency(card.limitMXN, primaryCurrency)}
                         </span>
                       </p>
                     </div>
@@ -337,7 +354,7 @@ export default function OnboardingCardsPage() {
             </div>
 
             <div className="border rounded-lg p-4 space-y-4">
-              <p className="font-medium">Pesos (MXN)</p>
+              <p className="font-medium">{getPrimaryCurrencyLabel()}</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="limitMXN">Límite de crédito</Label>

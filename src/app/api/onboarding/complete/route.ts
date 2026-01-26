@@ -3,12 +3,21 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { z } from 'zod'
 
+// All supported currencies from Prisma enum
+const VALID_CURRENCIES = [
+  'USD', 'MXN', 'CAD', // Norteamerica
+  'DOP', 'HTG', 'JMD', 'TTD', 'BBD', 'BSD', 'CUP', // Caribe
+  'GTQ', 'HNL', 'NIO', 'CRC', 'PAB', // Centroamerica
+  'COP', 'VES', 'PEN', 'CLP', 'ARS', 'BRL', 'UYU', 'PYG', 'BOB', // Sudamerica
+  'EUR', 'GBP', 'CHF', // Europa
+] as const
+
 const bankAccountSchema = z.object({
   id: z.string(),
   name: z.string().min(2).max(50),
   bankName: z.string().min(2).max(50),
   accountType: z.enum(['savings', 'checking']),
-  currency: z.enum(['MXN', 'USD']),
+  currency: z.enum(VALID_CURRENCIES),
   balance: z.number().min(0),
   color: z.string().optional(),
 })
