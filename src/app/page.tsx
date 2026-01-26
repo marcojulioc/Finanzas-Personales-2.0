@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
-import { redirect } from 'next/navigation'
 import {
   ArrowRight,
   Wallet,
@@ -14,14 +13,8 @@ import { Button } from '@/components/ui/button'
 
 export default async function LandingPage() {
   const session = await auth()
-
-  // Si el usuario está logueado, redirigir al dashboard
-  if (session?.user) {
-    if (!session.user.onboardingCompleted) {
-      redirect('/onboarding')
-    }
-    redirect('/dashboard')
-  }
+  const isLoggedIn = !!session?.user
+  const hasCompletedOnboarding = session?.user?.onboardingCompleted
 
   return (
     <div className="min-h-screen">
@@ -32,12 +25,24 @@ export default async function LandingPage() {
             Finanzas
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost">Iniciar sesión</Button>
-            </Link>
-            <Link href="/register">
-              <Button>Crear cuenta</Button>
-            </Link>
+            {isLoggedIn ? (
+              <>
+                <Link href={hasCompletedOnboarding ? '/dashboard' : '/onboarding'}>
+                  <Button>
+                    {hasCompletedOnboarding ? 'Ir al Dashboard' : 'Continuar configuración'}
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="ghost">Iniciar sesión</Button>
+                </Link>
+                <Link href="/register">
+                  <Button>Crear cuenta</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -58,17 +63,28 @@ export default async function LandingPage() {
             tarjetas en un solo lugar. Sin complicaciones, sin curva de aprendizaje.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/register">
-              <Button size="lg" className="w-full sm:w-auto text-base">
-                Comenzar gratis
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto text-base">
-                Ya tengo cuenta
-              </Button>
-            </Link>
+            {isLoggedIn ? (
+              <Link href={hasCompletedOnboarding ? '/dashboard' : '/onboarding'}>
+                <Button size="lg" className="w-full sm:w-auto text-base">
+                  {hasCompletedOnboarding ? 'Ir al Dashboard' : 'Continuar configuración'}
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/register">
+                  <Button size="lg" className="w-full sm:w-auto text-base">
+                    Comenzar gratis
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                <Link href="/login">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto text-base">
+                    Ya tengo cuenta
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -199,15 +215,22 @@ export default async function LandingPage() {
       <section className="py-20 px-4 bg-primary text-primary-foreground">
         <div className="container mx-auto max-w-3xl text-center">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-6">
-            Empieza a controlar tus finanzas hoy
+            {isLoggedIn ? 'Continúa donde lo dejaste' : 'Empieza a controlar tus finanzas hoy'}
           </h2>
           <p className="text-lg opacity-90 mb-8">
-            Crea tu cuenta gratis y configura tus cuentas y tarjetas en menos de 2
-            minutos.
+            {isLoggedIn
+              ? hasCompletedOnboarding
+                ? 'Tu dashboard te espera con toda tu información financiera.'
+                : 'Completa la configuración de tu cuenta para empezar.'
+              : 'Crea tu cuenta gratis y configura tus cuentas y tarjetas en menos de 2 minutos.'}
           </p>
-          <Link href="/register">
+          <Link href={isLoggedIn ? (hasCompletedOnboarding ? '/dashboard' : '/onboarding') : '/register'}>
             <Button size="lg" variant="secondary" className="text-base">
-              Crear cuenta gratis
+              {isLoggedIn
+                ? hasCompletedOnboarding
+                  ? 'Ir al Dashboard'
+                  : 'Continuar configuración'
+                : 'Crear cuenta gratis'}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
