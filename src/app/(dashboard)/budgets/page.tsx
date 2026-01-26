@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
-import { BudgetForm } from '@/components/budget-form'
+import { LazyBudgetForm } from '@/components/lazy-forms'
 import { Loader2, PencilIcon, TrashIcon, ChevronLeft, ChevronRight, Calendar, Copy, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils' // Assuming this helper exists
@@ -363,7 +363,7 @@ export default function BudgetsPage() {
               {editingBudget ? 'Actualiza los detalles de tu presupuesto.' : 'Establece un límite de gasto para una categoría en este mes.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <BudgetForm
+          <LazyBudgetForm
             initialData={editingBudget ? {
               id: editingBudget.id,
               category: editingBudget.category,

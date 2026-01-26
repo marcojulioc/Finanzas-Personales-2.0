@@ -84,8 +84,8 @@ export function NotificationBell() {
     }
   }, [isOpen, fetchNotifications])
 
-  // Mark all as read
-  const handleMarkAllAsRead = async () => {
+  // Mark all as read - memoized to prevent re-renders
+  const handleMarkAllAsRead = useCallback(async () => {
     try {
       const response = await fetch('/api/notifications/mark-read', {
         method: 'POST',
@@ -102,10 +102,10 @@ export function NotificationBell() {
     } catch (error) {
       console.error('Error marking notifications as read:', error)
     }
-  }
+  }, [])
 
-  // Mark single notification as read
-  const handleMarkAsRead = async (notificationId: string) => {
+  // Mark single notification as read - memoized
+  const handleMarkAsRead = useCallback(async (notificationId: string) => {
     try {
       const response = await fetch('/api/notifications/mark-read', {
         method: 'POST',
@@ -124,10 +124,10 @@ export function NotificationBell() {
     } catch (error) {
       console.error('Error marking notification as read:', error)
     }
-  }
+  }, [])
 
-  // Delete notification
-  const handleDelete = async (notificationId: string, e: React.MouseEvent) => {
+  // Delete notification - memoized
+  const handleDelete = useCallback(async (notificationId: string, e: React.MouseEvent) => {
     e.stopPropagation()
     try {
       const response = await fetch(`/api/notifications/${notificationId}`, {
@@ -135,16 +135,18 @@ export function NotificationBell() {
       })
 
       if (response.ok) {
-        const deletedNotification = notifications.find((n) => n.id === notificationId)
-        setNotifications((prev) => prev.filter((n) => n.id !== notificationId))
-        if (deletedNotification && !deletedNotification.isRead) {
-          setUnreadCount((prev) => Math.max(0, prev - 1))
-        }
+        setNotifications((prev) => {
+          const deletedNotification = prev.find((n) => n.id === notificationId)
+          if (deletedNotification && !deletedNotification.isRead) {
+            setUnreadCount((count) => Math.max(0, count - 1))
+          }
+          return prev.filter((n) => n.id !== notificationId)
+        })
       }
     } catch (error) {
       console.error('Error deleting notification:', error)
     }
-  }
+  }, [])
 
   // Format time ago
   const formatTimeAgo = (dateString: string) => {

@@ -1,5 +1,6 @@
+import { cache } from 'react'
 import Link from 'next/link'
-import { auth } from '@/lib/auth'
+import { getAuthSession } from '@/lib/auth-cache'
 import { db } from '@/lib/db'
 import { Decimal } from '@prisma/client/runtime/library'
 import {
@@ -22,15 +23,15 @@ import { generatePendingTransactions, getUpcomingRecurring, FREQUENCY_LABELS } f
 import { generateAllNotifications } from '@/lib/notification-utils'
 
 
-async function getDashboardData(userId: string) {
-  // Generate pending recurring transactions first
-  await generatePendingTransactions(userId)
-
-  // Generate notifications for the user
-  await generateAllNotifications(userId)
-
-  // Seed default categories for existing users (runs only if they have no categories)
-  await seedUserCategories(userId)
+// Cached dashboard data fetching - only runs once per request
+const getDashboardData = cache(async (userId: string) => {
+  // Run background tasks in parallel (non-blocking)
+  // These are fire-and-forget operations that don't affect the dashboard render
+  Promise.all([
+    generatePendingTransactions(userId),
+    generateAllNotifications(userId),
+    seedUserCategories(userId),
+  ]).catch(console.error) // Log errors but don't block
 
   // Obtener el primer día del mes actual (GMT para consistencia)
   const now = new Date();
@@ -137,7 +138,7 @@ async function getDashboardData(userId: string) {
     budgetsWithSpending,
     upcomingRecurring,
   }
-}
+})
 
 function formatDate(date: Date) {
   return new Date(date).toLocaleDateString('es-MX', {
@@ -147,7 +148,7 @@ function formatDate(date: Date) {
 }
 
 export default async function DashboardPage() {
-  const session = await auth()
+  const session = await getAuthSession()
   if (!session?.user?.id) return null
 
   const { bankAccounts, creditCards, recentTransactions, cardAlerts, totalBalanceMXN, totalDebtMXN, netBalance, budgetsWithSpending, upcomingRecurring } =
