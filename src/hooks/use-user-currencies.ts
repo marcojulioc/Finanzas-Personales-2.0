@@ -1,7 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import useSWR from 'swr'
+import { useMemo } from 'react'
 import { CURRENCIES, type CurrencyInfo } from '@/lib/currencies'
+
+interface UserCurrenciesResponse {
+  currencies: string[]
+  primaryCurrency: string
+}
 
 interface UserCurrenciesData {
   currencies: string[]
@@ -12,43 +18,30 @@ interface UserCurrenciesData {
 }
 
 export function useUserCurrencies(): UserCurrenciesData {
-  const [currencies, setCurrencies] = useState<string[]>(['USD'])
-  const [primaryCurrency, setPrimaryCurrency] = useState<string>('USD')
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function fetchUserCurrencies() {
-      try {
-        const response = await fetch('/api/user/currencies')
-        if (!response.ok) {
-          throw new Error('Error fetching currencies')
-        }
-        const result = await response.json()
-        if (result.data) {
-          setCurrencies(result.data.currencies || ['USD'])
-          setPrimaryCurrency(result.data.primaryCurrency || 'USD')
-        }
-      } catch (err) {
-        console.error('Error fetching user currencies:', err)
-        setError(err instanceof Error ? err.message : 'Error desconocido')
-      } finally {
-        setIsLoading(false)
-      }
+  const { data, error, isLoading } = useSWR<UserCurrenciesResponse>(
+    '/api/user/currencies',
+    async (url: string) => {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('Error fetching currencies')
+      const json = await res.json()
+      return json.data
     }
+  )
 
-    fetchUserCurrencies()
-  }, [])
+  const currencies = data?.currencies ?? ['USD']
+  const primaryCurrency = data?.primaryCurrency ?? 'USD'
 
-  const currencyOptions = currencies
-    .map((code) => CURRENCIES[code])
-    .filter(Boolean) as CurrencyInfo[]
+  const currencyOptions = useMemo(() => {
+    return currencies
+      .map((code) => CURRENCIES[code])
+      .filter(Boolean) as CurrencyInfo[]
+  }, [currencies])
 
   return {
     currencies,
     primaryCurrency,
     currencyOptions,
     isLoading,
-    error,
+    error: error ? (error instanceof Error ? error.message : 'Error') : null,
   }
 }
