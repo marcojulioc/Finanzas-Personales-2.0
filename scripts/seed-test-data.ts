@@ -64,6 +64,7 @@ async function main() {
   await prisma.budget.deleteMany({ where: { userId: user.id } })
   await prisma.transaction.deleteMany({ where: { userId: user.id } })
   await prisma.recurringTransaction.deleteMany({ where: { userId: user.id } })
+  // CreditCardBalance se elimina automáticamente por cascade
   await prisma.creditCard.deleteMany({ where: { userId: user.id } })
   await prisma.bankAccount.deleteMany({ where: { userId: user.id } })
   await prisma.category.deleteMany({ where: { userId: user.id } })
@@ -178,11 +179,22 @@ async function main() {
       bankName: 'BBVA',
       cutOffDay: 15,
       paymentDueDay: 5,
-      currency: Currency.MXN,
-      creditLimit: 80000.00,
-      balance: 12500.00,
       color: COLORS.blue,
       isActive: true,
+      balances: {
+        create: [
+          {
+            currency: Currency.MXN,
+            creditLimit: 80000.00,
+            balance: 12500.00,
+          },
+          {
+            currency: Currency.USD,
+            creditLimit: 2000.00,
+            balance: 150.00,
+          },
+        ],
+      },
     },
   })
 
@@ -193,11 +205,17 @@ async function main() {
       bankName: 'Nu',
       cutOffDay: 20,
       paymentDueDay: 10,
-      currency: Currency.MXN,
-      creditLimit: 45000.00,
-      balance: 8750.00,
       color: COLORS.purple,
       isActive: true,
+      balances: {
+        create: [
+          {
+            currency: Currency.MXN,
+            creditLimit: 45000.00,
+            balance: 8750.00,
+          },
+        ],
+      },
     },
   })
 
@@ -208,11 +226,22 @@ async function main() {
       bankName: 'American Express',
       cutOffDay: 25,
       paymentDueDay: 15,
-      currency: Currency.MXN,
-      creditLimit: 150000.00,
-      balance: 25000.00,
       color: COLORS.orange,
       isActive: true,
+      balances: {
+        create: [
+          {
+            currency: Currency.MXN,
+            creditLimit: 150000.00,
+            balance: 25000.00,
+          },
+          {
+            currency: Currency.USD,
+            creditLimit: 5000.00,
+            balance: 500.00,
+          },
+        ],
+      },
     },
   })
 
@@ -619,9 +648,9 @@ async function main() {
   console.log('   • Cuenta Dólares (Banorte): $2,500 USD')
   console.log('')
   console.log('💳 Deudas en tarjetas:')
-  console.log('   • BBVA Azul: $12,500 MXN')
+  console.log('   • BBVA Azul: $12,500 MXN + $150 USD')
   console.log('   • Nu Card: $8,750 MXN')
-  console.log('   • Amex Gold: $25,000 MXN')
+  console.log('   • Amex Gold: $25,000 MXN + $500 USD')
   console.log('')
 }
 

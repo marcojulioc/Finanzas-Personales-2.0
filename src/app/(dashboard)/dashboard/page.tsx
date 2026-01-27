@@ -46,6 +46,7 @@ const getDashboardData = cache(async (userId: string) => {
     db.creditCard.findMany({
       where: { userId, isActive: true },
       orderBy: { createdAt: 'asc' },
+      include: { balances: true },
     }),
     db.transaction.findMany({
       where: { userId },
@@ -90,11 +91,14 @@ const getDashboardData = cache(async (userId: string) => {
   }, 0)
 
   const totalDebtMXN = creditCards.reduce((sum, card) => {
-    const amount =
-      card.currency === 'USD'
-        ? Number(card.balance) * exchangeRate
-        : Number(card.balance)
-    return sum + amount
+    const cardDebt = card.balances.reduce((balanceSum, balance) => {
+      const amount =
+        balance.currency === 'USD'
+          ? Number(balance.balance) * exchangeRate
+          : Number(balance.balance)
+      return balanceSum + amount
+    }, 0)
+    return sum + cardDebt
   }, 0)
 
   // Calcular alertas de tarjetas
@@ -442,10 +446,9 @@ export default async function DashboardPage() {
               </p>
             ) : (
               creditCards.map((card) => {
-                const balance = Number(card.balance)
-                const limit = Number(card.creditLimit)
-                const usagePercent =
-                  limit > 0 ? (balance / limit) * 100 : 0
+                const totalBalance = card.balances.reduce((sum, b) => sum + Number(b.balance), 0)
+                const totalLimit = card.balances.reduce((sum, b) => sum + Number(b.creditLimit), 0)
+                const usagePercent = totalLimit > 0 ? (totalBalance / totalLimit) * 100 : 0
 
                 return (
                   <div
@@ -465,14 +468,22 @@ export default async function DashboardPage() {
                           </p>
                         </div>
                       </div>
-                      <span className="font-mono font-medium text-danger">
-                        -{formatCurrency(balance, card.currency)}
-                      </span>
+                    </div>
+                    {/* Multi-currency balances */}
+                    <div className="space-y-1 pl-5">
+                      {card.balances.map((balance) => (
+                        <div key={balance.id} className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">{balance.currency}</span>
+                          <span className="font-mono text-danger">
+                            -{formatCurrency(Number(balance.balance), balance.currency)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">
-                          Uso del crédito
+                          Uso del crédito total
                         </span>
                         <span>{usagePercent.toFixed(0)}%</span>
                       </div>

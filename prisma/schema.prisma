@@ -170,13 +170,11 @@ model CreditCard {
   bankName      String   @db.VarChar(50)
   cutOffDay     Int      @db.SmallInt
   paymentDueDay Int      @db.SmallInt
-  currency      Currency @default(USD)
-  creditLimit   Decimal  @db.Decimal(12, 2)
-  balance       Decimal  @db.Decimal(12, 2) @default(0)
   color         String?  @db.VarChar(7)
   isActive      Boolean  @default(true)
 
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balances         CreditCardBalance[]
   transactions     Transaction[] @relation("CardTransactions")
   paymentsReceived Transaction[] @relation("CardPayments")
   recurringTransactions RecurringTransaction[] @relation("RecurringCardTransactions")
@@ -186,6 +184,22 @@ model CreditCard {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+model CreditCardBalance {
+  id           String   @id @default(cuid())
+  creditCardId String
+  currency     Currency
+  creditLimit  Decimal  @db.Decimal(12, 2)
+  balance      Decimal  @db.Decimal(12, 2) @default(0)
+
+  creditCard   CreditCard @relation(fields: [creditCardId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([creditCardId, currency])
+  @@index([creditCardId])
 }
 
 model Transaction {

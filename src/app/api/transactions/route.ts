@@ -211,28 +211,50 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // Actualizar deuda de tarjeta de crédito
+      // Actualizar deuda de tarjeta de crédito (en el balance de la moneda correspondiente)
       if (data.creditCardId) {
         // Los gastos aumentan la deuda, los ingresos (pagos) la reducen
         const balanceChange = data.type === 'expense' ? data.amount : -data.amount
-        await tx.creditCard.update({
-          where: { id: data.creditCardId },
-          data: {
+        await tx.creditCardBalance.upsert({
+          where: {
+            creditCardId_currency: {
+              creditCardId: data.creditCardId,
+              currency: data.currency,
+            },
+          },
+          update: {
             balance: {
               increment: balanceChange,
             },
+          },
+          create: {
+            creditCardId: data.creditCardId,
+            currency: data.currency,
+            creditLimit: 0,
+            balance: balanceChange > 0 ? balanceChange : 0,
           },
         })
       }
 
       // Si es pago de tarjeta, reducir la deuda de la tarjeta destino
       if (data.isCardPayment && data.targetCardId) {
-        await tx.creditCard.update({
-          where: { id: data.targetCardId },
-          data: {
+        await tx.creditCardBalance.upsert({
+          where: {
+            creditCardId_currency: {
+              creditCardId: data.targetCardId,
+              currency: data.currency,
+            },
+          },
+          update: {
             balance: {
               decrement: data.amount,
             },
+          },
+          create: {
+            creditCardId: data.targetCardId,
+            currency: data.currency,
+            creditLimit: 0,
+            balance: 0,
           },
         })
       }

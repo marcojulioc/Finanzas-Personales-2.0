@@ -9,15 +9,19 @@ export interface BankAccountDraft {
   color?: string
 }
 
+export interface CreditCardBalanceDraft {
+  currency: string
+  creditLimit: number
+  balance: number
+}
+
 export interface CreditCardDraft {
   id: string
   name: string
   bankName: string
   cutOffDay: number
   paymentDueDay: number
-  currency: string
-  creditLimit: number
-  balance: number
+  balances: CreditCardBalanceDraft[]
   color?: string
 }
 

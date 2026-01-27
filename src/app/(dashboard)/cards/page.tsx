@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2, Pencil, CreditCard as CreditCardIcon } from 'lucide-react'
 import { z } from 'zod'
@@ -47,14 +47,18 @@ import {
 import { COMMON_BANKS, ACCOUNT_COLORS } from '@/lib/onboarding-store'
 import { formatCurrency } from '@/lib/format-utils'
 
+const balanceSchema = z.object({
+  currency: z.string().min(1, 'Selecciona una moneda'),
+  creditLimit: z.number().min(0),
+  balance: z.number().min(0),
+})
+
 const cardSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
   bankName: z.string().min(1, 'Selecciona un banco'),
   cutOffDay: z.number().int().min(1).max(31),
   paymentDueDay: z.number().int().min(1).max(31),
-  currency: z.string().min(1, 'Selecciona una moneda'),
-  creditLimit: z.number().min(0),
-  balance: z.number().min(0),
+  balances: z.array(balanceSchema).min(1, 'Agrega al menos una moneda'),
 })
 
 type CardFormData = z.infer<typeof cardSchema>
@@ -71,6 +75,7 @@ export default function CardsPage() {
   const {
     register,
     handleSubmit,
+    control,
     reset,
     setValue,
     watch,
@@ -80,10 +85,13 @@ export default function CardsPage() {
     defaultValues: {
       cutOffDay: 15,
       paymentDueDay: 25,
-      currency: primaryCurrency || 'USD',
-      creditLimit: 0,
-      balance: 0,
+      balances: [{ currency: primaryCurrency || 'USD', creditLimit: 0, balance: 0 }],
     },
+  })
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'balances',
   })
 
   const days = Array.from({ length: 31 }, (_, i) => i + 1)
@@ -96,9 +104,7 @@ export default function CardsPage() {
       bankName: '',
       cutOffDay: 15,
       paymentDueDay: 25,
-      currency: primaryCurrency || 'USD',
-      creditLimit: 0,
-      balance: 0,
+      balances: [{ currency: primaryCurrency || 'USD', creditLimit: 0, balance: 0 }],
     })
     setIsDialogOpen(true)
   }
@@ -111,9 +117,11 @@ export default function CardsPage() {
       bankName: card.bankName,
       cutOffDay: card.cutOffDay,
       paymentDueDay: card.paymentDueDay,
-      currency: card.currency,
-      creditLimit: Number(card.creditLimit),
-      balance: Number(card.balance),
+      balances: card.balances.map((b) => ({
+        currency: b.currency,
+        creditLimit: Number(b.creditLimit),
+        balance: Number(b.balance),
+      })),
     })
     setIsDialogOpen(true)
   }
@@ -180,15 +188,12 @@ export default function CardsPage() {
     }
   }
 
-  const getUsagePercent = (balance: number, limit: number) => {
-    if (limit <= 0) return 0
-    return Math.min((balance / limit) * 100, 100)
-  }
-
-  const getUsageColor = (percent: number) => {
-    if (percent > 80) return 'bg-danger'
-    if (percent > 50) return 'bg-warning'
-    return 'bg-success'
+  const addCurrency = () => {
+    const usedCurrencies = fields.map((f) => watch(`balances.${fields.indexOf(f)}.currency`))
+    const availableCurrency = currencyOptions.find((c) => !usedCurrencies.includes(c.code))
+    if (availableCurrency) {
+      append({ currency: availableCurrency.code, creditLimit: 0, balance: 0 })
+    }
   }
 
   if (isLoading) {
@@ -233,10 +238,6 @@ export default function CardsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {cards.map((card) => {
-            const balance = Number(card.balance)
-            const limit = Number(card.creditLimit)
-            const usagePercent = getUsagePercent(balance, limit)
-
             return (
               <Card key={card.id} className="relative overflow-hidden">
                 <div
@@ -288,40 +289,39 @@ export default function CardsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        Límite ({card.currency})
-                      </span>
-                      <span className="font-mono">
-                        {formatCurrency(balance, card.currency)} /{' '}
-                        {formatCurrency(limit, card.currency)}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all ${getUsageColor(usagePercent)}`}
-                        style={{ width: `${usagePercent}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground text-right">
-                      {usagePercent.toFixed(0)}% utilizado
-                    </p>
-                  </div>
+                  {/* Balances por moneda */}
+                  {card.balances.map((balance) => {
+                    const limit = Number(balance.creditLimit)
+                    const debt = Number(balance.balance)
+                    const usagePercent = limit > 0 ? Math.min((debt / limit) * 100, 100) : 0
+                    const getUsageColor = (percent: number) => {
+                      if (percent > 80) return 'bg-danger'
+                      if (percent > 50) return 'bg-warning'
+                      return 'bg-success'
+                    }
 
-                  <div className="pt-2 border-t">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">
-                        Deuda actual
-                      </span>
-                      <span className="text-xl font-bold font-mono text-danger">
-                        -{formatCurrency(balance, card.currency)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Disponible: {formatCurrency(limit - balance, card.currency)}
-                    </p>
-                  </div>
+                    return (
+                      <div key={balance.id} className="space-y-2 p-3 bg-muted/30 rounded-lg">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium">{balance.currency}</span>
+                          <span className="font-mono">
+                            {formatCurrency(debt, balance.currency)} /{' '}
+                            {formatCurrency(limit, balance.currency)}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all ${getUsageColor(usagePercent)}`}
+                            style={{ width: `${usagePercent}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{usagePercent.toFixed(0)}% utilizado</span>
+                          <span>Disponible: {formatCurrency(limit - debt, balance.currency)}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </CardContent>
               </Card>
             )
@@ -419,46 +419,73 @@ export default function CardsPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Moneda</Label>
-              <Select
-                value={watch('currency')}
-                onValueChange={(value) => setValue('currency', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona moneda" />
-                </SelectTrigger>
-                <SelectContent>
-                  {currencyOptions.map((currency) => (
-                    <SelectItem key={currency.code} value={currency.code}>
-                      {currency.flag} {currency.name} ({currency.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Balances por moneda */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Monedas y límites</Label>
+                {fields.length < currencyOptions.length && (
+                  <Button type="button" variant="outline" size="sm" onClick={addCurrency}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Agregar moneda
+                  </Button>
+                )}
+              </div>
+              {errors.balances && (
+                <p className="text-sm text-danger">{errors.balances.message}</p>
+              )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="creditLimit">Límite de crédito</Label>
-                <Input
-                  id="creditLimit"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  {...register('creditLimit', { valueAsNumber: true })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="balance">Deuda actual</Label>
-                <Input
-                  id="balance"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  {...register('balance', { valueAsNumber: true })}
-                />
-              </div>
+              {fields.map((field, index) => (
+                <div key={field.id} className="border rounded-lg p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Select
+                      value={watch(`balances.${index}.currency`)}
+                      onValueChange={(value) => setValue(`balances.${index}.currency`, value)}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue placeholder="Moneda" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencyOptions.map((currency) => (
+                          <SelectItem key={currency.code} value={currency.code}>
+                            {currency.flag} {currency.code}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {fields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-danger"
+                        onClick={() => remove(index)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Límite de crédito</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        {...register(`balances.${index}.creditLimit`, { valueAsNumber: true })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Deuda actual</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        {...register(`balances.${index}.balance`, { valueAsNumber: true })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="space-y-2">

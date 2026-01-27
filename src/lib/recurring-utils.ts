@@ -143,23 +143,45 @@ export async function generatePendingTransactions(userId: string): Promise<numbe
           })
         }
 
-        // Update credit card balance
+        // Update credit card balance (multi-currency)
         if (recurring.creditCardId) {
           const balanceChange = recurring.type === 'expense' ? amount : -amount
-          await tx.creditCard.update({
-            where: { id: recurring.creditCardId },
-            data: {
+          await tx.creditCardBalance.upsert({
+            where: {
+              creditCardId_currency: {
+                creditCardId: recurring.creditCardId,
+                currency: recurring.currency,
+              },
+            },
+            update: {
               balance: { increment: balanceChange },
+            },
+            create: {
+              creditCardId: recurring.creditCardId,
+              currency: recurring.currency,
+              creditLimit: 0,
+              balance: balanceChange > 0 ? balanceChange : 0,
             },
           })
         }
 
-        // If card payment, reduce target card debt
+        // If card payment, reduce target card debt (multi-currency)
         if (recurring.isCardPayment && recurring.targetCardId) {
-          await tx.creditCard.update({
-            where: { id: recurring.targetCardId },
-            data: {
+          await tx.creditCardBalance.upsert({
+            where: {
+              creditCardId_currency: {
+                creditCardId: recurring.targetCardId,
+                currency: recurring.currency,
+              },
+            },
+            update: {
               balance: { decrement: amount },
+            },
+            create: {
+              creditCardId: recurring.targetCardId,
+              currency: recurring.currency,
+              creditLimit: 0,
+              balance: 0,
             },
           })
         }

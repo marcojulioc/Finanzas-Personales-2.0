@@ -7,7 +7,7 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-// GET /api/cards/:id - Obtener una tarjeta
+// GET /api/cards/:id - Obtener una tarjeta con sus balances
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
@@ -19,6 +19,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const card = await db.creditCard.findFirst({
       where: { id, userId: session.user.id, isActive: true },
+      include: {
+        balances: {
+          orderBy: { currency: 'asc' },
+        },
+      },
     })
 
     if (!card) {
@@ -38,7 +43,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// PUT /api/cards/:id - Actualizar tarjeta
+// PUT /api/cards/:id - Actualizar tarjeta con balances multi-moneda
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
@@ -51,6 +56,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     // Verificar que la tarjeta pertenece al usuario
     const existingCard = await db.creditCard.findFirst({
       where: { id, userId: session.user.id, isActive: true },
+      include: { balances: true },
     })
 
     if (!existingCard) {
@@ -70,18 +76,34 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    const card = await db.creditCard.update({
-      where: { id },
-      data: {
-        name: result.data.name,
-        bankName: result.data.bankName,
-        cutOffDay: result.data.cutOffDay,
-        paymentDueDay: result.data.paymentDueDay,
-        currency: result.data.currency,
-        creditLimit: result.data.creditLimit,
-        balance: result.data.balance,
-        color: result.data.color,
-      },
+    // Update card and balances in a transaction
+    const card = await db.$transaction(async (tx) => {
+      // Delete existing balances
+      await tx.creditCardBalance.deleteMany({
+        where: { creditCardId: id },
+      })
+
+      // Update card and create new balances
+      return tx.creditCard.update({
+        where: { id },
+        data: {
+          name: result.data.name,
+          bankName: result.data.bankName,
+          cutOffDay: result.data.cutOffDay,
+          paymentDueDay: result.data.paymentDueDay,
+          color: result.data.color,
+          balances: {
+            create: result.data.balances.map((b) => ({
+              currency: b.currency,
+              creditLimit: b.creditLimit,
+              balance: b.balance,
+            })),
+          },
+        },
+        include: {
+          balances: true,
+        },
+      })
     })
 
     return NextResponse.json({ data: card })

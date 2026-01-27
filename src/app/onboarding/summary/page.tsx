@@ -47,7 +47,7 @@ export default function OnboardingSummaryPage() {
     // Find the most common currency to use as primary
     const allCurrencies = [
       ...state.bankAccounts.map(a => a.currency),
-      ...state.creditCards.map(c => c.currency),
+      ...state.creditCards.flatMap(c => c.balances.map(b => b.currency)),
     ]
     const currencyCount: Record<string, number> = {}
     allCurrencies.forEach(c => { currencyCount[c] = (currencyCount[c] || 0) + 1 })
@@ -66,7 +66,9 @@ export default function OnboardingSummaryPage() {
     }, 0)
 
     const totalDebt = state.creditCards.reduce((sum, card) => {
-      return sum + card.balance * getRate(card.currency)
+      return sum + card.balances.reduce((cardSum, balance) => {
+        return cardSum + balance.balance * getRate(balance.currency)
+      }, 0)
     }, 0)
 
     return {
@@ -218,32 +220,47 @@ export default function OnboardingSummaryPage() {
           </div>
           {state.creditCards.length > 0 ? (
             <div className="space-y-2">
-              {state.creditCards.map((card) => (
-                <div
-                  key={card.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: card.color }}
-                    />
-                    <span>{card.name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      ({card.bankName})
-                    </span>
+              {state.creditCards.map((card) => {
+                return (
+                  <div
+                    key={card.id}
+                    className="p-3 rounded-lg bg-muted/50"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: card.color }}
+                        />
+                        <span>{card.name}</span>
+                        <span className="text-sm text-muted-foreground">
+                          ({card.bankName})
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1 pl-4">
+                      {card.balances.map((balance, idx) => (
+                        <div key={idx} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">{balance.currency}</span>
+                          <div>
+                            {balance.balance > 0 ? (
+                              <span className="font-mono text-danger">
+                                -{formatCurrency(balance.balance, balance.currency)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">Sin deuda</span>
+                            )}
+                            <span className="text-muted-foreground mx-2">|</span>
+                            <span className="font-mono text-xs">
+                              Límite: {formatCurrency(balance.creditLimit, balance.currency)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    {card.balance > 0 ? (
-                      <span className="font-mono text-danger">
-                        -{formatCurrency(card.balance, card.currency)}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">Sin deuda</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">

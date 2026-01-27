@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { transactionSchema } from '@/lib/validations'
+import { Currency } from '@prisma/client'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -101,30 +102,52 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         })
       }
 
-      // Revertir el efecto en tarjeta de crédito
+      // Revertir el efecto en tarjeta de crédito (balance por moneda)
       if (existingTransaction.creditCardId) {
         const oldBalanceChange =
           existingTransaction.type === 'expense'
             ? -Number(existingTransaction.amount)
             : Number(existingTransaction.amount)
-        await tx.creditCard.update({
-          where: { id: existingTransaction.creditCardId },
-          data: {
+        await tx.creditCardBalance.upsert({
+          where: {
+            creditCardId_currency: {
+              creditCardId: existingTransaction.creditCardId,
+              currency: existingTransaction.currency as Currency,
+            },
+          },
+          update: {
             balance: {
               increment: oldBalanceChange,
             },
+          },
+          create: {
+            creditCardId: existingTransaction.creditCardId,
+            currency: existingTransaction.currency as Currency,
+            creditLimit: 0,
+            balance: 0,
           },
         })
       }
 
       // Revertir pago de tarjeta anterior
       if (existingTransaction.isCardPayment && existingTransaction.targetCardId) {
-        await tx.creditCard.update({
-          where: { id: existingTransaction.targetCardId },
-          data: {
+        await tx.creditCardBalance.upsert({
+          where: {
+            creditCardId_currency: {
+              creditCardId: existingTransaction.targetCardId,
+              currency: existingTransaction.currency as Currency,
+            },
+          },
+          update: {
             balance: {
               increment: Number(existingTransaction.amount),
             },
+          },
+          create: {
+            creditCardId: existingTransaction.targetCardId,
+            currency: existingTransaction.currency as Currency,
+            creditLimit: 0,
+            balance: Number(existingTransaction.amount),
           },
         })
       }
@@ -167,27 +190,49 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         })
       }
 
-      // Aplicar el nuevo efecto en tarjeta de crédito
+      // Aplicar el nuevo efecto en tarjeta de crédito (balance por moneda)
       if (data.creditCardId) {
         const newBalanceChange = data.type === 'expense' ? data.amount : -data.amount
-        await tx.creditCard.update({
-          where: { id: data.creditCardId },
-          data: {
+        await tx.creditCardBalance.upsert({
+          where: {
+            creditCardId_currency: {
+              creditCardId: data.creditCardId,
+              currency: data.currency,
+            },
+          },
+          update: {
             balance: {
               increment: newBalanceChange,
             },
+          },
+          create: {
+            creditCardId: data.creditCardId,
+            currency: data.currency,
+            creditLimit: 0,
+            balance: newBalanceChange > 0 ? newBalanceChange : 0,
           },
         })
       }
 
       // Aplicar nuevo pago de tarjeta
       if (data.isCardPayment && data.targetCardId) {
-        await tx.creditCard.update({
-          where: { id: data.targetCardId },
-          data: {
+        await tx.creditCardBalance.upsert({
+          where: {
+            creditCardId_currency: {
+              creditCardId: data.targetCardId,
+              currency: data.currency,
+            },
+          },
+          update: {
             balance: {
               decrement: data.amount,
             },
+          },
+          create: {
+            creditCardId: data.targetCardId,
+            currency: data.currency,
+            creditLimit: 0,
+            balance: 0,
           },
         })
       }
@@ -245,30 +290,52 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         })
       }
 
-      // Revertir el efecto en tarjeta de crédito
+      // Revertir el efecto en tarjeta de crédito (balance por moneda)
       if (existingTransaction.creditCardId) {
         const balanceChange =
           existingTransaction.type === 'expense'
             ? -Number(existingTransaction.amount)
             : Number(existingTransaction.amount)
-        await tx.creditCard.update({
-          where: { id: existingTransaction.creditCardId },
-          data: {
+        await tx.creditCardBalance.upsert({
+          where: {
+            creditCardId_currency: {
+              creditCardId: existingTransaction.creditCardId,
+              currency: existingTransaction.currency as Currency,
+            },
+          },
+          update: {
             balance: {
               increment: balanceChange,
             },
+          },
+          create: {
+            creditCardId: existingTransaction.creditCardId,
+            currency: existingTransaction.currency as Currency,
+            creditLimit: 0,
+            balance: 0,
           },
         })
       }
 
       // Revertir pago de tarjeta
       if (existingTransaction.isCardPayment && existingTransaction.targetCardId) {
-        await tx.creditCard.update({
-          where: { id: existingTransaction.targetCardId },
-          data: {
+        await tx.creditCardBalance.upsert({
+          where: {
+            creditCardId_currency: {
+              creditCardId: existingTransaction.targetCardId,
+              currency: existingTransaction.currency as Currency,
+            },
+          },
+          update: {
             balance: {
               increment: Number(existingTransaction.amount),
             },
+          },
+          create: {
+            creditCardId: existingTransaction.targetCardId,
+            currency: existingTransaction.currency as Currency,
+            creditLimit: 0,
+            balance: Number(existingTransaction.amount),
           },
         })
       }

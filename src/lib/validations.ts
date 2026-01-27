@@ -61,7 +61,14 @@ export const bankAccountSchema = z.object({
     .optional(),
 })
 
-// Tarjetas de crédito
+// Balance de tarjeta por moneda
+export const creditCardBalanceSchema = z.object({
+  currency: currencyEnum,
+  creditLimit: z.number().min(0, 'El límite no puede ser negativo'),
+  balance: z.number().min(0, 'La deuda no puede ser negativa').default(0),
+})
+
+// Tarjetas de crédito (multi-moneda)
 export const creditCardSchema = z.object({
   name: z
     .string()
@@ -81,9 +88,7 @@ export const creditCardSchema = z.object({
     .int()
     .min(1, 'El día de pago debe estar entre 1 y 31')
     .max(31, 'El día de pago debe estar entre 1 y 31'),
-  currency: currencyEnum,
-  creditLimit: z.number().min(0, 'El límite no puede ser negativo'),
-  balance: z.number().min(0, 'La deuda no puede ser negativa').default(0),
+  balances: z.array(creditCardBalanceSchema).min(1, 'Debe agregar al menos una moneda'),
   color: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, 'Color inválido')
@@ -149,6 +154,7 @@ export const recurringTransactionSchema = z.object({
 export type LoginInput = z.infer<typeof loginSchema>
 export type RegisterInput = z.infer<typeof registerSchema>
 export type BankAccountInput = z.infer<typeof bankAccountSchema>
+export type CreditCardBalanceInput = z.infer<typeof creditCardBalanceSchema>
 export type CreditCardInput = z.infer<typeof creditCardSchema>
 export type TransactionInput = z.infer<typeof transactionSchema>
 export type BudgetInput = z.infer<typeof budgetSchema>

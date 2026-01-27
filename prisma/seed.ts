@@ -41,10 +41,21 @@ async function main() {
             bankName: 'Santander',
             cutOffDay: 15,
             paymentDueDay: 5,
-            currency: 'MXN',
-            creditLimit: 80000,
-            balance: 12500,
             color: '#f97316',
+            balances: {
+              create: [
+                {
+                  currency: 'MXN',
+                  creditLimit: 80000,
+                  balance: 12500,
+                },
+                {
+                  currency: 'USD',
+                  creditLimit: 2000,
+                  balance: 350,
+                },
+              ],
+            },
           },
         ],
       },

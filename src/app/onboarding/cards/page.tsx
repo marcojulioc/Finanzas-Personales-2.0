@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plus, Trash2, ArrowRight, ArrowLeft, CreditCard } from 'lucide-react'
+import { Plus, Trash2, ArrowRight, ArrowLeft, CreditCard, X } from 'lucide-react'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
@@ -35,14 +35,18 @@ import {
 } from '@/lib/onboarding-store'
 import { CURRENCIES } from '@/lib/currencies'
 
+const balanceSchema = z.object({
+  currency: z.string().min(1, 'Selecciona una moneda'),
+  creditLimit: z.number().min(0, 'El límite no puede ser negativo'),
+  balance: z.number().min(0, 'La deuda no puede ser negativa'),
+})
+
 const cardSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
   bankName: z.string().min(1, 'Selecciona un banco'),
   cutOffDay: z.number().int().min(1).max(31),
   paymentDueDay: z.number().int().min(1).max(31),
-  currency: z.string().min(1, 'Selecciona una moneda'),
-  creditLimit: z.number().min(0),
-  balance: z.number().min(0),
+  balances: z.array(balanceSchema).min(1, 'Agrega al menos una moneda'),
 })
 
 type CardFormData = z.infer<typeof cardSchema>
@@ -52,11 +56,12 @@ export default function OnboardingCardsPage() {
   const [cards, setCards] = useState<CreditCardDraft[]>([])
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [primaryCurrency, setPrimaryCurrency] = useState<string>('MXN')
+  const [primaryCurrency, setPrimaryCurrency] = useState<string>('DOP')
 
   const {
     register,
     handleSubmit,
+    control,
     reset,
     setValue,
     watch,
@@ -66,10 +71,13 @@ export default function OnboardingCardsPage() {
     defaultValues: {
       cutOffDay: 15,
       paymentDueDay: 25,
-      currency: 'USD',
-      creditLimit: 0,
-      balance: 0,
+      balances: [{ currency: 'DOP', creditLimit: 0, balance: 0 }],
     },
+  })
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'balances',
   })
 
   useEffect(() => {
@@ -86,7 +94,7 @@ export default function OnboardingCardsPage() {
         if (data.data?.primaryCurrency) {
           setPrimaryCurrency(data.data.primaryCurrency)
           // Set default currency for form
-          setValue('currency', data.data.primaryCurrency)
+          setValue('balances.0.currency', data.data.primaryCurrency)
         }
       })
       .catch(console.error)
@@ -122,9 +130,7 @@ export default function OnboardingCardsPage() {
       bankName: '',
       cutOffDay: 15,
       paymentDueDay: 25,
-      currency: primaryCurrency,
-      creditLimit: 0,
-      balance: 0,
+      balances: [{ currency: primaryCurrency, creditLimit: 0, balance: 0 }],
     })
   }
 
@@ -142,15 +148,19 @@ export default function OnboardingCardsPage() {
     setValue('bankName', card.bankName)
     setValue('cutOffDay', card.cutOffDay)
     setValue('paymentDueDay', card.paymentDueDay)
-    setValue('currency', card.currency)
-    setValue('creditLimit', card.creditLimit)
-    setValue('balance', card.balance)
+    setValue('balances', card.balances)
   }
 
   const handleCancel = () => {
     setIsAdding(false)
     setEditingId(null)
-    reset()
+    reset({
+      name: '',
+      bankName: '',
+      cutOffDay: 15,
+      paymentDueDay: 25,
+      balances: [{ currency: primaryCurrency, creditLimit: 0, balance: 0 }],
+    })
   }
 
   const handleContinue = () => {
@@ -175,6 +185,20 @@ export default function OnboardingCardsPage() {
   }))
 
   const days = Array.from({ length: 31 }, (_, i) => i + 1)
+
+  const addCurrency = () => {
+    const usedCurrencies = fields.map((f) => watch(`balances.${fields.indexOf(f)}.currency`))
+    const availableCurrency = currencyOptions.find((c) => !usedCurrencies.includes(c.code))
+    append({
+      currency: availableCurrency?.code || 'USD',
+      creditLimit: 0,
+      balance: 0,
+    })
+  }
+
+  const getTotalDebt = (balances: { currency: string; balance: number }[]) => {
+    return balances.reduce((sum, b) => sum + b.balance, 0)
+  }
 
   return (
     <Card>
@@ -232,20 +256,28 @@ export default function OnboardingCardsPage() {
                     </Button>
                   </div>
                 </div>
-                <div className="text-sm">
-                  <p className="text-muted-foreground">{card.currency}</p>
-                  <p>
-                    Deuda:{' '}
-                    <span className="font-mono text-danger">
-                      {formatCurrency(card.balance, card.currency)}
-                    </span>
-                  </p>
-                  <p>
-                    Límite:{' '}
-                    <span className="font-mono">
-                      {formatCurrency(card.creditLimit, card.currency)}
-                    </span>
-                  </p>
+                <div className="space-y-1">
+                  {card.balances.map((balance, idx) => (
+                    <div key={idx} className="text-sm flex justify-between">
+                      <span className="text-muted-foreground">{balance.currency}</span>
+                      <div>
+                        <span className="font-mono text-danger">
+                          Deuda: {formatCurrency(balance.balance, balance.currency)}
+                        </span>
+                        <span className="text-muted-foreground mx-2">|</span>
+                        <span className="font-mono">
+                          Límite: {formatCurrency(balance.creditLimit, balance.currency)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  {card.balances.length > 1 && getTotalDebt(card.balances) > 0 && (
+                    <p className="text-sm font-medium text-danger mt-2">
+                      Deuda total (mixta): {card.balances.map((b) =>
+                        b.balance > 0 ? `${formatCurrency(b.balance, b.currency)}` : null
+                      ).filter(Boolean).join(' + ')}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
@@ -331,51 +363,91 @@ export default function OnboardingCardsPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Moneda</Label>
-              <Select
-                value={watch('currency')}
-                onValueChange={(value) => setValue('currency', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona moneda" />
-                </SelectTrigger>
-                <SelectContent>
-                  {currencyOptions.map((currency) => (
-                    <SelectItem key={currency.code} value={currency.code}>
-                      {currency.flag} {currency.name} ({currency.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.currency && (
-                <p className="text-sm text-danger">{errors.currency.message}</p>
-              )}
-            </div>
+            {/* Multi-currency balances */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label>Monedas y límites</Label>
+                {fields.length < currencyOptions.length && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addCurrency}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Agregar moneda
+                  </Button>
+                )}
+              </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="creditLimit">Límite de crédito</Label>
-                <Input
-                  id="creditLimit"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  {...register('creditLimit', { valueAsNumber: true })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="balance">Deuda actual</Label>
-                <Input
-                  id="balance"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  {...register('balance', { valueAsNumber: true })}
-                />
-              </div>
+              {errors.balances?.message && (
+                <p className="text-sm text-danger">{errors.balances.message}</p>
+              )}
+
+              {fields.map((field, index) => (
+                <div
+                  key={field.id}
+                  className="p-4 border rounded-lg space-y-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <Select
+                      value={watch(`balances.${index}.currency`)}
+                      onValueChange={(value) =>
+                        setValue(`balances.${index}.currency`, value)
+                      }
+                    >
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Moneda" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencyOptions.map((currency) => (
+                          <SelectItem key={currency.code} value={currency.code}>
+                            {currency.flag} {currency.name} ({currency.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {fields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-danger hover:text-danger"
+                        onClick={() => remove(index)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Límite de crédito</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        {...register(`balances.${index}.creditLimit`, {
+                          valueAsNumber: true,
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Deuda actual</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        {...register(`balances.${index}.balance`, {
+                          valueAsNumber: true,
+                        })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="flex gap-2">

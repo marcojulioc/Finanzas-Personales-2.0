@@ -22,15 +22,19 @@ const bankAccountSchema = z.object({
   color: z.string().optional(),
 })
 
+const creditCardBalanceSchema = z.object({
+  currency: z.enum(VALID_CURRENCIES),
+  creditLimit: z.number().min(0),
+  balance: z.number().min(0),
+})
+
 const creditCardSchema = z.object({
   id: z.string(),
   name: z.string().min(2).max(50),
   bankName: z.string().min(2).max(50),
   cutOffDay: z.number().int().min(1).max(31),
   paymentDueDay: z.number().int().min(1).max(31),
-  currency: z.enum(VALID_CURRENCIES),
-  creditLimit: z.number().min(0),
-  balance: z.number().min(0),
+  balances: z.array(creditCardBalanceSchema).min(1),
   color: z.string().optional(),
 })
 
@@ -103,20 +107,24 @@ export async function POST(request: Request) {
         })
       }
 
-      // Crear tarjetas de crédito
-      if (creditCards.length > 0) {
-        await tx.creditCard.createMany({
-          data: creditCards.map((card) => ({
+      // Crear tarjetas de crédito con balances multi-moneda
+      for (const card of creditCards) {
+        await tx.creditCard.create({
+          data: {
             userId: session.user.id,
             name: card.name,
             bankName: card.bankName,
             cutOffDay: card.cutOffDay,
             paymentDueDay: card.paymentDueDay,
-            currency: card.currency,
-            creditLimit: card.creditLimit,
-            balance: card.balance,
             color: card.color,
-          })),
+            balances: {
+              create: card.balances.map((balance) => ({
+                currency: balance.currency,
+                creditLimit: balance.creditLimit,
+                balance: balance.balance,
+              })),
+            },
+          },
         })
       }
 
