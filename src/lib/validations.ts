@@ -1,5 +1,21 @@
 import { z } from 'zod'
 
+// All supported currencies
+const currencyEnum = z.enum([
+  // Norteamerica
+  'USD', 'MXN', 'CAD',
+  // Caribe
+  'DOP', 'HTG', 'JMD', 'TTD', 'BBD', 'BSD', 'CUP',
+  // Centroamerica
+  'GTQ', 'HNL', 'NIO', 'CRC', 'PAB',
+  // Sudamerica
+  'COP', 'VES', 'PEN', 'CLP', 'ARS', 'BRL', 'UYU', 'PYG', 'BOB',
+  // Europa
+  'EUR', 'GBP', 'CHF',
+], {
+  message: 'Moneda inválida',
+})
+
 // Autenticación
 export const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -34,9 +50,7 @@ export const bankAccountSchema = z.object({
   accountType: z.enum(['savings', 'checking'], {
     message: 'Tipo de cuenta inválido',
   }),
-  currency: z.enum(['MXN', 'USD'], {
-    message: 'Moneda inválida',
-  }),
+  currency: currencyEnum,
   balance: z
     .number()
     .min(0, 'El balance no puede ser negativo')
@@ -83,9 +97,7 @@ export const transactionSchema = z.object({
     message: 'Tipo de transacción inválido',
   }),
   amount: z.number().positive('El monto debe ser mayor a 0'),
-  currency: z.enum(['MXN', 'USD'], {
-    message: 'Moneda inválida',
-  }),
+  currency: currencyEnum,
   category: z
     .string()
     .min(1, 'La categoría es requerida')
@@ -114,9 +126,7 @@ export const recurringTransactionSchema = z.object({
     message: 'Tipo de transacción inválido',
   }),
   amount: z.number().positive('El monto debe ser mayor a 0'),
-  currency: z.enum(['MXN', 'USD'], {
-    message: 'Moneda inválida',
-  }),
+  currency: currencyEnum,
   category: z
     .string()
     .min(1, 'La categoría es requerida')
