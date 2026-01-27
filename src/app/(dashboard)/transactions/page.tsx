@@ -48,7 +48,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
-import { getCategoryById } from '@/lib/categories'
+import type { Category } from '@/lib/categories'
 import { formatCurrency, formatDate } from '@/lib/format-utils'
 import { useUserCurrencies } from '@/hooks/use-user-currencies'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -342,7 +342,10 @@ export default function TransactionsPage() {
             <CardContent className="p-0">
               <div className="divide-y">
                 {transactions.map((transaction) => {
-                  const category = getCategoryById(transaction.category)
+                  // Buscar categoría por nombre en las categorías del usuario
+                  const category = userCategories.find(
+                    (cat: Category) => cat.name === transaction.category
+                  )
                   return (
                     <div
                       key={transaction.id}
