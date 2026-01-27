@@ -1,6 +1,21 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💰 Finanzas Personales 2.0
 
-## Getting Started
+Aplicación web moderna de finanzas personales construida con Next.js 16, React 19, TypeScript y PostgreSQL.
+
+## ✨ Características
+
+- 🔐 Autenticación con NextAuth.js (Credenciales + Google OAuth)
+- 💳 Gestión de múltiples cuentas bancarias y tarjetas de crédito
+- 💱 Soporte para 28 monedas (América, Caribe, Europa)
+- 📊 Presupuestos mensuales con alertas
+- 🔄 Transacciones recurrentes automáticas
+- 📱 PWA - Instalable en móvil y desktop
+- 🎨 Categorías personalizables con iconos y colores
+- 📈 Reportes y gráficos interactivos
+- 🔔 Notificaciones in-app inteligentes
+- 🌓 Dark mode
+
+## 🚀 Getting Started
 
 First, run the development server:
 
@@ -29,8 +44,26 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## 🛠️ Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4
+- **Backend**: Next.js API Routes, Prisma ORM
+- **Database**: PostgreSQL
+- **Auth**: NextAuth.js v5
+- **UI Components**: shadcn/ui
+- **Charts**: Recharts
+- **Testing**: Vitest + Playwright
+- **Deployment**: Railway
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📚 Documentation
+
+- Ver [PRD-MVP-Finanzas-Personales.md](./PRD-MVP-Finanzas-Personales.md) para especificaciones completas
+- Ver [CLAUDE.md](./CLAUDE.md) para guía de desarrollo
+
+## 🚢 Deploy
+
+Esta aplicación está configurada para despliegue automático en Railway. Cada push a `master` activa un nuevo deploy.
+
+## 📄 License
+
+MIT
