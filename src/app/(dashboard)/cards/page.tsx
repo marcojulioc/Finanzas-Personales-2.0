@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { COMMON_BANKS, ACCOUNT_COLORS } from '@/lib/onboarding-store'
+import { formatCurrency } from '@/lib/format-utils'
 
 const cardSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
@@ -179,13 +180,6 @@ export default function CardsPage() {
       console.error('Error deleting card:', error)
       toast.error('Error al eliminar la tarjeta')
     }
-  }
-
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: currency,
-    }).format(amount)
   }
 
   const getUsagePercent = (balance: number, limit: number) => {

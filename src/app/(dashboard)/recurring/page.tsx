@@ -42,7 +42,7 @@ import { Badge } from '@/components/ui/badge'
 import { getCategoryById } from '@/lib/categories'
 import { RecurringForm } from '@/components/recurring-form'
 import { FREQUENCY_LABELS } from '@/lib/recurring-constants'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatDate } from '@/lib/format-utils'
 import { useRecurring, RecurringTransaction } from '@/hooks/use-recurring'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useCards } from '@/hooks/use-cards'
@@ -151,14 +151,6 @@ export default function RecurringPage() {
     } finally {
       setIsGenerating(false)
     }
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-MX', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    })
   }
 
   const getStatusBadge = (recurring: RecurringTransaction) => {

@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { getCategoryById } from '@/lib/categories'
+import { formatCurrency, formatDate } from '@/lib/format-utils'
 import { useUserCurrencies } from '@/hooks/use-user-currencies'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useAccounts } from '@/hooks/use-accounts'
@@ -257,21 +258,6 @@ export default function TransactionsPage() {
       console.error('Error deleting transaction:', error)
       toast.error(error instanceof Error ? error.message : 'Error al eliminar la transaccion')
     }
-  }
-
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: currency,
-    }).format(amount)
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-MX', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    })
   }
 
   // Use filtered categories from hook based on transaction type

@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Loader2, TrendingUp, TrendingDown, Wallet, Calendar, ArrowUpRight, ArrowDownRight } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency } from '@/lib/format-utils'
 import { getCategoryById } from '@/lib/categories'
 import { useReports } from '@/hooks/use-reports'
 

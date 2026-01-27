@@ -9,7 +9,7 @@ import { LazyBudgetForm } from '@/components/lazy-forms'
 import { BudgetSummaryCard } from '@/components/budget-summary-card'
 import { Loader2, PencilIcon, TrashIcon, ChevronLeft, ChevronRight, Calendar, Copy, Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency } from '@/lib/format-utils'
 import { Progress } from '@/components/ui/progress'
 import { useBudgets, usePreviousMonthBudgets, type Budget } from '@/hooks/use-budgets'
 

@@ -16,7 +16,7 @@ import { Landmark, CreditCard, TrendingUp, TrendingDown, Plus, Receipt, ArrowRig
 import { getCategoryById, seedUserCategories } from '@/lib/categories'
 import { getCardAlerts } from '@/lib/card-alerts'
 import { CardAlerts } from '@/components/card-alerts'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency } from '@/lib/format-utils'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { generatePendingTransactions, getUpcomingRecurring, FREQUENCY_LABELS } from '@/lib/recurring-utils'

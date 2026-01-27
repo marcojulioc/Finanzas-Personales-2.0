@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency } from '@/lib/format-utils'
 import { TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 
 interface BudgetSummaryCardProps {

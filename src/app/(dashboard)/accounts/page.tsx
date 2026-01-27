@@ -43,6 +43,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { COMMON_BANKS, ACCOUNT_COLORS } from '@/lib/onboarding-store'
+import { formatCurrency } from '@/lib/format-utils'
 import { useUserCurrencies } from '@/hooks/use-user-currencies'
 import { useAccounts, type BankAccount } from '@/hooks/use-accounts'
 
@@ -170,13 +171,6 @@ export default function AccountsPage() {
       console.error('Error deleting account:', error)
       toast.error('Error al eliminar la cuenta')
     }
-  }
-
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: currency,
-    }).format(amount)
   }
 
   if (isLoading) {
