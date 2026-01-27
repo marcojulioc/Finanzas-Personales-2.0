@@ -2,20 +2,20 @@
 
 import React, { useState } from 'react'
 import {
-  PieChart,
+  LazyPieChart,
+  LazyBarChart,
+  LazyAreaChart,
   Pie,
   Cell,
-  BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
-  AreaChart,
   Area,
   ResponsiveContainer,
-} from 'recharts'
+} from '@/components/lazy-charts'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -234,7 +234,7 @@ function CategoryDonutChart({
     <div className="flex flex-col lg:flex-row items-center gap-4">
       <div className="w-full lg:w-1/2 h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
+          <LazyPieChart>
             <Pie
               data={chartData}
               cx="50%"
@@ -256,7 +256,7 @@ function CategoryDonutChart({
                 borderRadius: '8px',
               }}
             />
-          </PieChart>
+          </LazyPieChart>
         </ResponsiveContainer>
         <div className="text-center -mt-[180px] pointer-events-none">
           <p className="text-sm text-muted-foreground">Total</p>
@@ -310,7 +310,7 @@ function IncomeExpenseBarChart({
   return (
     <div className="h-[300px]">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+        <LazyBarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
           <XAxis
             dataKey="monthLabel"
@@ -343,7 +343,7 @@ function IncomeExpenseBarChart({
             fill="#ef4444"
             radius={[4, 4, 0, 0]}
           />
-        </BarChart>
+        </LazyBarChart>
       </ResponsiveContainer>
     </div>
   )
@@ -380,7 +380,7 @@ function BalanceAreaChart({
   return (
     <div className="h-[300px]">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+        <LazyAreaChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <defs>
             <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
               <stop
@@ -425,7 +425,7 @@ function BalanceAreaChart({
             strokeWidth={2}
             fill="url(#balanceGradient)"
           />
-        </AreaChart>
+        </LazyAreaChart>
       </ResponsiveContainer>
     </div>
   )
