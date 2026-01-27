@@ -63,14 +63,14 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         month: toMonthStart,
       },
-      select: { category: true },
+      select: { categoryId: true },
     })
 
-    const existingCategories = new Set(existingBudgets.map(b => b.category))
+    const existingCategoryIds = new Set(existingBudgets.map(b => b.categoryId))
 
     // Filter out budgets that already exist in target month
     const budgetsToCopy = sourceBudgets.filter(
-      budget => !existingCategories.has(budget.category)
+      budget => !existingCategoryIds.has(budget.categoryId)
     )
 
     if (budgetsToCopy.length === 0) {
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     const createdBudgets = await db.budget.createMany({
       data: budgetsToCopy.map(budget => ({
         userId: session.user.id,
-        category: budget.category,
+        categoryId: budget.categoryId,
         amount: budget.amount,
         month: toMonthStart,
       })),

@@ -41,9 +41,10 @@ export async function generateBudgetNotifications(userId: string): Promise<void>
   const currentMonthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1))
   const nextMonthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1))
 
-  // Obtener presupuestos del mes actual
+  // Obtener presupuestos del mes actual con categoría
   const budgets = await db.budget.findMany({
     where: { userId, month: currentMonthStart },
+    include: { category: true },
   })
 
   if (budgets.length === 0) return
@@ -70,10 +71,9 @@ export async function generateBudgetNotifications(userId: string): Promise<void>
   }, {} as Record<string, Decimal>)
 
   for (const budget of budgets) {
-    const spent = spendingByCategory[budget.category] || new Decimal(0)
+    const spent = spendingByCategory[budget.category.name] || new Decimal(0)
     const percentage = spent.dividedBy(budget.amount).times(100).toNumber()
-    const category = getCategoryById(budget.category)
-    const categoryName = category?.name || budget.category
+    const categoryName = budget.category.name
 
     if (percentage >= 100) {
       // Presupuesto excedido
@@ -85,7 +85,7 @@ export async function generateBudgetNotifications(userId: string): Promise<void>
             type: 'budget_exceeded',
             title: NOTIFICATION_TITLES.budget_exceeded,
             message: `Has excedido tu presupuesto de ${categoryName} (${percentage.toFixed(0)}% gastado)`,
-            data: { budgetId: budget.id, category: budget.category, percentage },
+            data: { budgetId: budget.id, categoryId: budget.categoryId, percentage },
           },
         })
       }
@@ -99,7 +99,7 @@ export async function generateBudgetNotifications(userId: string): Promise<void>
             type: 'budget_warning',
             title: NOTIFICATION_TITLES.budget_warning,
             message: `Tu presupuesto de ${categoryName} esta al ${percentage.toFixed(0)}%`,
-            data: { budgetId: budget.id, category: budget.category, percentage },
+            data: { budgetId: budget.id, categoryId: budget.categoryId, percentage },
           },
         })
       }

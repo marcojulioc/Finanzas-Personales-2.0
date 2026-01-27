@@ -22,12 +22,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Verificar que la categoría existe y pertenece al usuario
+    const category = await db.category.findFirst({
+      where: {
+        id: result.data.categoryId,
+        userId: session.user.id,
+      },
+    })
+
+    if (!category) {
+      return NextResponse.json(
+        { error: 'La categoría no existe o no te pertenece' },
+        { status: 422 }
+      )
+    }
+
     const budget = await db.budget.create({
       data: {
         userId: session.user.id,
-        category: result.data.category,
+        categoryId: result.data.categoryId,
         amount: result.data.amount,
         month: result.data.month,
+      },
+      include: {
+        category: true,
       },
     })
 
@@ -69,11 +87,14 @@ export async function GET(request: NextRequest) {
       nextMonthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1))
     }
 
-
+    // Obtener presupuestos con información de categoría
     const budgets = await db.budget.findMany({
       where: {
         userId: session.user.id,
         month: currentMonthStart,
+      },
+      include: {
+        category: true,
       },
       orderBy: { createdAt: 'asc' },
     })
@@ -94,34 +115,41 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Calcular el gasto total por categoría
+    // Calcular el gasto total por categoría (usando el nombre de categoría)
     const spendingByCategory = expenseTransactions.reduce((acc, transaction) => {
-      const category = transaction.category;
-      const amount = new Decimal(transaction.amount); // Convert to Decimal for aggregation
-      
+      const category = transaction.category
+      const amount = new Decimal(transaction.amount)
+
       if (acc[category]) {
-        acc[category] = new Decimal(acc[category]).plus(amount);
+        acc[category] = new Decimal(acc[category]).plus(amount)
       } else {
-        acc[category] = amount;
+        acc[category] = amount
       }
-      return acc;
-    }, {} as Record<string, Decimal>); // Use Decimal for accumulator
+      return acc
+    }, {} as Record<string, Decimal>)
 
     // Combinar presupuestos con el gasto calculado
     const budgetsWithSpending = budgets.map((budget) => {
-      const spent = spendingByCategory[budget.category] || new Decimal(0);
+      // Buscar gastos por el nombre de la categoría
+      const spent = spendingByCategory[budget.category.name] || new Decimal(0)
       return {
-        // Explicitly map fields to ensure Decimal types are converted to number
         id: budget.id,
         userId: budget.userId,
-        category: budget.category,
-        amount: budget.amount.toNumber(), // Convert Decimal to number for API response
+        categoryId: budget.categoryId,
+        category: {
+          id: budget.category.id,
+          name: budget.category.name,
+          icon: budget.category.icon,
+          color: budget.category.color,
+          type: budget.category.type,
+        },
+        amount: budget.amount.toNumber(),
         month: budget.month,
         createdAt: budget.createdAt,
         updatedAt: budget.updatedAt,
-        spent: spent.toNumber(), // Convert Decimal to number for API response
-      };
-    });
+        spent: spent.toNumber(),
+      }
+    })
 
     return NextResponse.json({ data: budgetsWithSpending })
   } catch (error) {

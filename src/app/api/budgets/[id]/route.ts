@@ -48,7 +48,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       where: { id },
       data: {
         amount: result.data.amount,
-        updatedAt: new Date(), // Manually update updatedAt
+        updatedAt: new Date(),
+      },
+      include: {
+        category: true,
       },
     })
 

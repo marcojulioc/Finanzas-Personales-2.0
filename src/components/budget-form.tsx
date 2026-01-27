@@ -29,10 +29,7 @@ import { Loader2 } from 'lucide-react'
 
 // Local schema for form with proper Date type (not coerced)
 const budgetFormSchema = z.object({
-  category: z
-    .string()
-    .min(1, 'La categoría es requerida')
-    .max(50, 'La categoría no puede exceder 50 caracteres'),
+  categoryId: z.string().min(1, 'La categoría es requerida'),
   amount: z.number().positive('El monto debe ser mayor a 0'),
   month: z.date(),
 })
@@ -40,10 +37,15 @@ const budgetFormSchema = z.object({
 type BudgetFormValues = z.infer<typeof budgetFormSchema>
 
 interface BudgetFormProps {
-  initialData?: BudgetFormValues & { id: string }; // For editing
-  selectedMonth?: Date; // Month to create budget for
-  onSuccess?: () => void;
-  onCancel?: () => void;
+  initialData?: {
+    id: string
+    categoryId: string
+    amount: number
+    month: Date
+  }
+  selectedMonth?: Date
+  onSuccess?: () => void
+  onCancel?: () => void
 }
 
 // Generate month options (current month + next 12 months)
@@ -99,10 +101,11 @@ export function BudgetForm({ initialData, selectedMonth, onSuccess, onCancel }: 
   const form = useForm<BudgetFormValues>({
     resolver: zodResolver(budgetFormSchema),
     defaultValues: initialData ? {
-      ...initialData,
+      categoryId: initialData.categoryId,
+      amount: initialData.amount,
       month: getDefaultMonth(),
     } : {
-      category: '',
+      categoryId: '',
       amount: 0,
       month: getDefaultMonth(),
     },
@@ -148,7 +151,7 @@ export function BudgetForm({ initialData, selectedMonth, onSuccess, onCancel }: 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
-          name="category"
+          name="categoryId"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Categoría</FormLabel>
@@ -160,7 +163,7 @@ export function BudgetForm({ initialData, selectedMonth, onSuccess, onCancel }: 
                 </FormControl>
                 <SelectContent>
                   {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.name}>
+                    <SelectItem key={category.id} value={category.id}>
                       {category.icon} {category.name}
                     </SelectItem>
                   ))}

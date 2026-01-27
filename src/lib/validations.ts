@@ -103,10 +103,7 @@ export const transactionSchema = z.object({
 
 // Presupuestos
 export const budgetSchema = z.object({
-  category: z
-    .string()
-    .min(1, 'La categoría es requerida')
-    .max(50, 'La categoría no puede exceder 50 caracteres'),
+  categoryId: z.string().cuid('ID de categoría inválido'),
   amount: z.number().positive('El monto debe ser mayor a 0'),
   month: z.coerce.date(), // Represented as the first day of the month
 })

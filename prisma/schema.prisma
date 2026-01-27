@@ -227,26 +227,30 @@ model Transaction {
   @@index([recurringTransactionId])
 }
 
-// Nuevo modelo para Presupuestos
+// Modelo para Presupuestos
 model Budget {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  category  String   // Ej: "Alimentación", "Transporte"
-  amount    Decimal  @db.Decimal(12, 2) // Límite del presupuesto
-  
-  // Para esta primera versión, todos los presupuestos serán mensuales
+  // Foreign key a Category
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  amount     Decimal  @db.Decimal(12, 2) // Límite del presupuesto
+
+  // Todos los presupuestos son mensuales
   // Representamos el mes como el primer día de ese mes.
   // Ej: '2026-02-01' para el presupuesto de Febrero 2026.
-  month     DateTime @db.Date 
+  month      DateTime @db.Date
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Un usuario solo puede tener un presupuesto por categoría y mes
-  @@unique([userId, category, month])
+  @@unique([userId, categoryId, month])
   @@index([userId])
+  @@index([categoryId])
 }
 
 model RecurringTransaction {
@@ -314,6 +318,7 @@ model Category {
   isActive  Boolean         @default(true)
 
   user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budgets   Budget[]        // Relación inversa con presupuestos
 
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt

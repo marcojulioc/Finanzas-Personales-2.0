@@ -6,16 +6,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 import { LazyBudgetForm } from '@/components/lazy-forms'
+import { BudgetSummaryCard } from '@/components/budget-summary-card'
 import { Loader2, PencilIcon, TrashIcon, ChevronLeft, ChevronRight, Calendar, Copy, Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatCurrency } from '@/lib/utils' // Assuming this helper exists
-import { getCategoryById } from '@/lib/categories'
-import { Progress } from '@/components/ui/progress' // Assuming shadcn progress component exists
+import { formatCurrency } from '@/lib/utils'
+import { Progress } from '@/components/ui/progress'
 
+interface BudgetCategory {
+  id: string
+  name: string
+  icon: string
+  color: string
+  type: string
+}
 
 interface Budget {
   id: string
-  category: string
+  categoryId: string
+  category: BudgetCategory
   amount: number
   spent: number
   month: string | Date
@@ -222,6 +230,10 @@ export default function BudgetsPage() {
 
   const daysRemaining = getDaysRemaining(selectedMonth)
 
+  // Calculate totals for summary card
+  const totalBudgeted = budgets.reduce((sum, b) => sum + b.amount, 0)
+  const totalSpent = budgets.reduce((sum, b) => sum + b.spent, 0)
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -252,6 +264,14 @@ export default function BudgetsPage() {
       </div>
 
       <Separator />
+
+      {/* Summary Card - only show when there are budgets */}
+      {budgets.length > 0 && (
+        <BudgetSummaryCard
+          totalBudgeted={totalBudgeted}
+          totalSpent={totalSpent}
+        />
+      )}
 
       {budgets.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -291,7 +311,6 @@ export default function BudgetsPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {budgets.map((budget) => {
-              const category = getCategoryById(budget.category);
               const progressValue = Math.min((budget.spent / budget.amount) * 100, 100);
               const available = budget.amount - budget.spent;
               const isOverBudget = budget.spent > budget.amount;
@@ -302,10 +321,10 @@ export default function BudgetsPage() {
                 <Card key={budget.id} className={isOverBudget ? "border-destructive/50" : ""}>
                   <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl">{category?.icon}</span>
+                      <span className="text-2xl">{budget.category.icon}</span>
                       <div>
                         <CardTitle className="text-base font-semibold">
-                          {category?.name || budget.category}
+                          {budget.category.name}
                         </CardTitle>
                       </div>
                     </div>
@@ -366,7 +385,7 @@ export default function BudgetsPage() {
           <LazyBudgetForm
             initialData={editingBudget ? {
               id: editingBudget.id,
-              category: editingBudget.category,
+              categoryId: editingBudget.categoryId,
               amount: editingBudget.amount,
               month: new Date(editingBudget.month),
             } : undefined}

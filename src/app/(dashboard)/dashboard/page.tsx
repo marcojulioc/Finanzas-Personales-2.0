@@ -59,6 +59,7 @@ const getDashboardData = cache(async (userId: string) => {
     db.budget.findMany({
       where: { userId, month: currentMonthStart },
       orderBy: { createdAt: 'asc' },
+      include: { category: true },
     }),
     db.transaction.findMany({
       where: {
@@ -117,10 +118,16 @@ const getDashboardData = cache(async (userId: string) => {
 
   // Combinar presupuestos con el gasto calculado
   const budgetsWithSpending = budgets.map((budget) => {
-    const spent = spendingByCategory[budget.category] || new Decimal(0);
+    const spent = spendingByCategory[budget.category.name] || new Decimal(0);
     return {
       id: budget.id,
-      category: budget.category,
+      categoryId: budget.categoryId,
+      category: {
+        id: budget.category.id,
+        name: budget.category.name,
+        icon: budget.category.icon,
+        color: budget.category.color,
+      },
       amount: budget.amount.toNumber(),
       month: budget.month,
       spent: spent.toNumber(),
@@ -283,14 +290,13 @@ export default async function DashboardPage() {
                 </div>
                 <Separator />
               {budgetsWithSpending.map((budget) => {
-                const category = getCategoryById(budget.category);
                 const progressValue = (budget.spent / budget.amount) * 100;
                 const progressColor = progressValue >= 100 ? "bg-destructive" : progressValue >= 80 ? "bg-amber-500" : "bg-primary";
 
                 return (
                   <div key={budget.id} className="grid grid-cols-4 items-center gap-2 py-2">
                     <div className="col-span-1 flex items-center gap-2 text-sm font-medium">
-                      {category?.icon} {category?.name || budget.category}
+                      {budget.category.icon} {budget.category.name}
                     </div>
                     <div className="col-span-3 space-y-1">
                       <div className="flex justify-between text-xs">
