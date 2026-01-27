@@ -2,7 +2,7 @@
 
 import useSWR from 'swr'
 
-interface BankAccount {
+export interface BankAccount {
   id: string
   name: string
   bankName: string

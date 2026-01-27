@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2, Pencil, Landmark } from 'lucide-react'
@@ -44,17 +44,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { COMMON_BANKS, ACCOUNT_COLORS } from '@/lib/onboarding-store'
 import { useUserCurrencies } from '@/hooks/use-user-currencies'
-
-interface BankAccount {
-  id: string
-  name: string
-  bankName: string
-  accountType: 'savings' | 'checking'
-  currency: string
-  balance: number
-  color: string | null
-  isActive: boolean
-}
+import { useAccounts, type BankAccount } from '@/hooks/use-accounts'
 
 const accountSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
@@ -68,8 +58,7 @@ const accountSchema = z.object({
 type AccountFormData = z.infer<typeof accountSchema>
 
 export default function AccountsPage() {
-  const [accounts, setAccounts] = useState<BankAccount[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { accounts, isLoading, mutate } = useAccounts()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null)
@@ -94,24 +83,6 @@ export default function AccountsPage() {
       balance: 0,
     },
   })
-
-  const fetchAccounts = async () => {
-    try {
-      const response = await fetch('/api/accounts')
-      const result = await response.json()
-      if (result.data) {
-        setAccounts(result.data)
-      }
-    } catch (error) {
-      console.error('Error fetching accounts:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchAccounts()
-  }, [])
 
   const openCreateDialog = () => {
     setEditingAccount(null)
@@ -170,7 +141,7 @@ export default function AccountsPage() {
       }
 
       setIsDialogOpen(false)
-      fetchAccounts()
+      mutate()
     } catch (error) {
       console.error('Error saving account:', error)
       toast.error(error instanceof Error ? error.message : 'Error al guardar la cuenta')
@@ -194,7 +165,7 @@ export default function AccountsPage() {
       toast.success('Cuenta eliminada correctamente')
       setIsDeleteDialogOpen(false)
       setDeletingAccountId(null)
-      fetchAccounts()
+      mutate()
     } catch (error) {
       console.error('Error deleting account:', error)
       toast.error('Error al eliminar la cuenta')
