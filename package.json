@@ -9,6 +9,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "prisma migrate deploy && next start",
+    "start:server": "next start",
     "lint": "eslint",
     "test": "vitest",
     "test:run": "vitest run",
