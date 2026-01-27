@@ -46,7 +46,14 @@ export async function GET(request: NextRequest) {
       ],
     })
 
-    return NextResponse.json({ data: categories })
+    return NextResponse.json(
+      { data: categories },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=60, stale-while-revalidate=300',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error fetching categories:', error)
     return NextResponse.json(

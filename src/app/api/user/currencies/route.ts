@@ -29,12 +29,19 @@ export async function GET() {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
     }
 
-    return NextResponse.json({
-      data: {
-        currencies: user.currencies,
-        primaryCurrency: user.primaryCurrency,
+    return NextResponse.json(
+      {
+        data: {
+          currencies: user.currencies,
+          primaryCurrency: user.primaryCurrency,
+        },
       },
-    })
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=60, stale-while-revalidate=300',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error fetching user currencies:', error)
     return NextResponse.json(
