@@ -55,7 +55,7 @@ function getMonthOptions(): { value: string; label: string }[] {
 
   for (let i = 0; i < 13; i++) {
     const date = new Date(Date.UTC(now.getFullYear(), now.getMonth() + i, 1))
-    const label = date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+    const label = date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' })
     // Capitalize first letter
     const capitalizedLabel = label.charAt(0).toUpperCase() + label.slice(1)
     options.push({
