@@ -20,7 +20,7 @@ function getMonthStart(date: Date): Date {
 
 // Helper to format month for display
 function formatMonthDisplay(date: Date): string {
-  const formatted = date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+  const formatted = date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' })
   return formatted.charAt(0).toUpperCase() + formatted.slice(1)
 }
 
@@ -80,12 +80,12 @@ export default function BudgetsPage() {
 
   // Navigate to previous month
   const goToPreviousMonth = () => {
-    setSelectedMonth(prev => getMonthStart(new Date(prev.getFullYear(), prev.getMonth() - 1, 1)))
+    setSelectedMonth(prev => new Date(Date.UTC(prev.getUTCFullYear(), prev.getUTCMonth() - 1, 1)))
   }
 
   // Navigate to next month
   const goToNextMonth = () => {
-    setSelectedMonth(prev => getMonthStart(new Date(prev.getFullYear(), prev.getMonth() + 1, 1)))
+    setSelectedMonth(prev => new Date(Date.UTC(prev.getUTCFullYear(), prev.getUTCMonth() + 1, 1)))
   }
 
   // Navigate to current month
@@ -96,7 +96,7 @@ export default function BudgetsPage() {
   const copyFromPreviousMonth = async () => {
     setIsCopying(true)
     try {
-      const prevMonth = getMonthStart(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1))
+      const prevMonth = new Date(Date.UTC(selectedMonth.getUTCFullYear(), selectedMonth.getUTCMonth() - 1, 1))
       const response = await fetch('/api/budgets/copy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
