@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -16,6 +16,7 @@ import {
 import { CategoryForm } from '@/components/category-form'
 import { Loader2, PencilIcon, TrashIcon, Plus, Tags, TrendingDown, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
+import { useCategories } from '@/hooks/use-categories'
 
 interface Category {
   id: string
@@ -28,35 +29,14 @@ interface Category {
 }
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { categories, isLoading, mutate } = useCategories()
+
   const [activeTab, setActiveTab] = useState<'expense' | 'income'>('expense')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-
-  const fetchCategories = async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch('/api/categories')
-      if (!response.ok) {
-        throw new Error('Error al cargar las categorias')
-      }
-      const data = await response.json()
-      setCategories(data.data)
-    } catch (error) {
-      console.error('Error fetching categories:', error)
-      toast.error('Error al cargar las categorias')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchCategories()
-  }, [])
 
   const handleNewCategory = () => {
     setEditingCategory(null)
@@ -87,7 +67,7 @@ export default function CategoriesPage() {
       }
 
       toast.success('Categoria eliminada correctamente')
-      fetchCategories()
+      mutate()
     } catch (error) {
       console.error('Error deleting category:', error)
       toast.error('Error al eliminar la categoria')
@@ -101,7 +81,7 @@ export default function CategoriesPage() {
   const handleFormSuccess = () => {
     setIsFormOpen(false)
     setEditingCategory(null)
-    fetchCategories()
+    mutate()
   }
 
   const filteredCategories = categories.filter((cat) => cat.type === activeTab)

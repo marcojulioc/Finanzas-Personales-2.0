@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Plus,
   Trash2,
@@ -43,48 +43,15 @@ import { getCategoryById } from '@/lib/categories'
 import { RecurringForm } from '@/components/recurring-form'
 import { FREQUENCY_LABELS } from '@/lib/recurring-constants'
 import { formatCurrency } from '@/lib/utils'
-
-interface BankAccount {
-  id: string
-  name: string
-  color: string | null
-}
-
-interface CreditCardData {
-  id: string
-  name: string
-  color: string | null
-}
-
-interface RecurringTransaction {
-  id: string
-  type: 'income' | 'expense'
-  amount: number
-  currency: 'MXN' | 'USD'
-  category: string
-  description: string | null
-  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly'
-  startDate: string
-  endDate: string | null
-  nextDueDate: string
-  lastGeneratedDate: string | null
-  isActive: boolean
-  bankAccountId: string | null
-  creditCardId: string | null
-  isCardPayment: boolean
-  targetCardId: string | null
-  bankAccount: BankAccount | null
-  creditCard: CreditCardData | null
-  targetCard: CreditCardData | null
-}
+import { useRecurring, RecurringTransaction } from '@/hooks/use-recurring'
+import { useAccounts } from '@/hooks/use-accounts'
+import { useCards } from '@/hooks/use-cards'
 
 export default function RecurringPage() {
-  const [recurringTransactions, setRecurringTransactions] = useState<
-    RecurringTransaction[]
-  >([])
-  const [accounts, setAccounts] = useState<BankAccount[]>([])
-  const [cards, setCards] = useState<CreditCardData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { recurringTransactions, isLoading, mutate } = useRecurring()
+  const { accounts } = useAccounts()
+  const { cards } = useCards()
+
   const [isGenerating, setIsGenerating] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -93,43 +60,6 @@ export default function RecurringPage() {
   const [deletingRecurringId, setDeletingRecurringId] = useState<string | null>(
     null
   )
-
-  const fetchRecurringTransactions = async () => {
-    try {
-      const response = await fetch('/api/recurring')
-      const result = await response.json()
-      if (result.data) {
-        setRecurringTransactions(result.data)
-      }
-    } catch (error) {
-      console.error('Error fetching recurring transactions:', error)
-      toast.error('Error al cargar las transacciones recurrentes')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const fetchAccountsAndCards = async () => {
-    try {
-      const [accountsRes, cardsRes] = await Promise.all([
-        fetch('/api/accounts'),
-        fetch('/api/cards'),
-      ])
-      const [accountsData, cardsData] = await Promise.all([
-        accountsRes.json(),
-        cardsRes.json(),
-      ])
-      setAccounts(accountsData.data || [])
-      setCards(cardsData.data || [])
-    } catch (error) {
-      console.error('Error fetching accounts/cards:', error)
-    }
-  }
-
-  useEffect(() => {
-    fetchRecurringTransactions()
-    fetchAccountsAndCards()
-  }, [])
 
   const openCreateDialog = () => {
     setEditingRecurring(null)
@@ -158,7 +88,7 @@ export default function RecurringPage() {
           ? 'Recurrente activada'
           : 'Recurrente pausada'
       )
-      fetchRecurringTransactions()
+      mutate()
     } catch (error) {
       console.error('Error toggling recurring:', error)
       toast.error(
@@ -185,7 +115,7 @@ export default function RecurringPage() {
       toast.success('Recurrente eliminada correctamente')
       setIsDeleteDialogOpen(false)
       setDeletingRecurringId(null)
-      fetchRecurringTransactions()
+      mutate()
     } catch (error) {
       console.error('Error deleting recurring:', error)
       toast.error(
@@ -210,7 +140,7 @@ export default function RecurringPage() {
       }
 
       toast.success(result.message)
-      fetchRecurringTransactions()
+      mutate()
     } catch (error) {
       console.error('Error generating recurring transactions:', error)
       toast.error(
@@ -463,7 +393,7 @@ export default function RecurringPage() {
             cards={cards}
             onSuccess={() => {
               setIsDialogOpen(false)
-              fetchRecurringTransactions()
+              mutate()
             }}
             onCancel={() => setIsDialogOpen(false)}
           />

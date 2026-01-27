@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -11,25 +11,7 @@ import { Loader2, PencilIcon, TrashIcon, ChevronLeft, ChevronRight, Calendar, Co
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
-
-interface BudgetCategory {
-  id: string
-  name: string
-  icon: string
-  color: string
-  type: string
-}
-
-interface Budget {
-  id: string
-  categoryId: string
-  category: BudgetCategory
-  amount: number
-  spent: number
-  month: string | Date
-  createdAt: string | Date
-  updatedAt: string | Date
-}
+import { useBudgets, usePreviousMonthBudgets, type Budget } from '@/hooks/use-budgets'
 
 // Helper to get first day of a month in UTC
 function getMonthStart(date: Date): Date {
@@ -48,6 +30,12 @@ function formatDateForApi(date: Date): string {
   const month = String(date.getUTCMonth() + 1).padStart(2, '0')
   const day = String(date.getUTCDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+// Helper to check if a date is in the current month
+function isDateInCurrentMonth(date: Date): boolean {
+  const now = getMonthStart(new Date())
+  return date.getTime() === now.getTime()
 }
 
 // Helper to get days remaining in a month
@@ -73,24 +61,22 @@ function getDaysRemaining(monthDate: Date): number {
 }
 
 export default function BudgetsPage() {
-  const [budgets, setBudgets] = useState<Budget[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [budgetToDelete, setBudgetToDelete] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [budgetToDelete, setBudgetToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Month navigation state
   const [selectedMonth, setSelectedMonth] = useState<Date>(() => getMonthStart(new Date()))
-  const [previousMonthHasBudgets, setPreviousMonthHasBudgets] = useState(false)
   const [isCopying, setIsCopying] = useState(false)
 
+  // SWR hooks for data fetching
+  const { budgets, isLoading, isError, error, mutate } = useBudgets(selectedMonth)
+  const { hasBudgets: previousMonthHasBudgets } = usePreviousMonthBudgets(selectedMonth)
+
   // Check if selected month is current month
-  const isCurrentMonth = () => {
-    const now = getMonthStart(new Date())
-    return selectedMonth.getTime() === now.getTime()
-  }
+  const isCurrentMonth = isDateInCurrentMonth(selectedMonth)
 
   // Navigate to previous month
   const goToPreviousMonth = () => {
@@ -105,36 +91,6 @@ export default function BudgetsPage() {
   // Navigate to current month
   const goToCurrentMonth = () => {
     setSelectedMonth(getMonthStart(new Date()))
-  }
-
-  const fetchBudgets = async (month: Date) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const monthParam = formatDateForApi(month)
-      const response = await fetch(`/api/budgets?month=${monthParam}`)
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error?.message || 'Error al cargar los presupuestos')
-      }
-      const data = await response.json()
-      setBudgets(data.data)
-
-      // Check if previous month has budgets (for copy feature)
-      const prevMonth = getMonthStart(new Date(month.getFullYear(), month.getMonth() - 1, 1))
-      const prevMonthParam = formatDateForApi(prevMonth)
-      const prevResponse = await fetch(`/api/budgets?month=${prevMonthParam}`)
-      if (prevResponse.ok) {
-        const prevData = await prevResponse.json()
-        setPreviousMonthHasBudgets(prevData.data.length > 0)
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error desconocido'
-      setError(message)
-      toast.error(message)
-    } finally {
-      setIsLoading(false)
-    }
   }
 
   const copyFromPreviousMonth = async () => {
@@ -157,7 +113,7 @@ export default function BudgetsPage() {
       }
 
       toast.success(data.message)
-      fetchBudgets(selectedMonth)
+      mutate()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al copiar presupuestos'
       toast.error(message)
@@ -165,10 +121,6 @@ export default function BudgetsPage() {
       setIsCopying(false)
     }
   }
-
-  useEffect(() => {
-    fetchBudgets(selectedMonth)
-  }, [selectedMonth])
 
   const handleNewBudgetClick = () => {
     setEditingBudget(null)
@@ -181,34 +133,36 @@ export default function BudgetsPage() {
   }
 
   const handleDeleteBudget = (id: string) => {
-    setBudgetToDelete(id);
-    setIsDeleteDialogOpen(true);
+    setBudgetToDelete(id)
+    setIsDeleteDialogOpen(true)
   }
 
   const confirmDeleteBudget = async () => {
-    if (!budgetToDelete) return;
+    if (!budgetToDelete) return
+    setIsDeleting(true)
     try {
       const response = await fetch(`/api/budgets/${budgetToDelete}`, {
         method: 'DELETE',
-      });
+      })
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Error al eliminar el presupuesto');
+        const errorData = await response.json()
+        throw new Error(errorData.error?.message || 'Error al eliminar el presupuesto')
       }
-      toast.success('Presupuesto eliminado correctamente.');
-      fetchBudgets(selectedMonth); // Refresh list
+      toast.success('Presupuesto eliminado correctamente.')
+      mutate()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al eliminar el presupuesto'
-      toast.error(message);
+      toast.error(message)
     } finally {
-      setIsDeleteDialogOpen(false);
-      setBudgetToDelete(null);
+      setIsDeleting(false)
+      setIsDeleteDialogOpen(false)
+      setBudgetToDelete(null)
     }
   }
 
   const handleFormSuccess = () => {
     setIsFormOpen(false)
-    fetchBudgets(selectedMonth)
+    mutate()
   }
 
   if (isLoading) {
@@ -219,11 +173,11 @@ export default function BudgetsPage() {
     )
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div className="text-center text-destructive">
-        <p>Error: {error}</p>
-        <Button onClick={() => fetchBudgets(selectedMonth)} className="mt-4">Reintentar</Button>
+        <p>Error: {error?.message ?? 'Error al cargar los presupuestos'}</p>
+        <Button onClick={() => mutate()} className="mt-4">Reintentar</Button>
       </div>
     )
   }
@@ -256,7 +210,7 @@ export default function BudgetsPage() {
         <Button variant="outline" size="icon" onClick={goToNextMonth}>
           <ChevronRight className="h-4 w-4" />
         </Button>
-        {!isCurrentMonth() && (
+        {!isCurrentMonth && (
           <Button variant="ghost" size="sm" onClick={goToCurrentMonth} className="ml-2">
             Hoy
           </Button>
@@ -302,7 +256,7 @@ export default function BudgetsPage() {
       ) : (
         <>
           {/* Summary bar */}
-          {isCurrentMonth() && daysRemaining > 0 && (
+          {isCurrentMonth && daysRemaining > 0 && (
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg py-2 px-4">
               <Calendar className="h-4 w-4" />
               <span>{daysRemaining} {daysRemaining === 1 ? 'día restante' : 'días restantes'} en el mes</span>
@@ -406,8 +360,9 @@ export default function BudgetsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteBudget} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={isLoading}>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteBudget} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={isDeleting}>
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

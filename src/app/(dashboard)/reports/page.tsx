@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import {
   PieChart,
   Pie,
@@ -27,45 +27,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Loader2, TrendingUp, TrendingDown, Wallet, Calendar, ArrowUpRight, ArrowDownRight } from 'lucide-react'
-import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 import { getCategoryById } from '@/lib/categories'
-
-interface ReportData {
-  period: {
-    start: string
-    end: string
-    label: string
-  }
-  summary: {
-    totalIncome: number
-    totalExpenses: number
-    netBalance: number
-    avgDailySpending: number
-    avgMonthlySpending: number
-    transactionCount: number
-  }
-  categoryDistribution: {
-    category: string
-    amount: number
-    percentage: number
-  }[]
-  monthlySummary: {
-    month: string
-    monthLabel: string
-    income: number
-    expenses: number
-    balance: number
-  }[]
-  balanceTrend: {
-    date: string
-    balance: number
-  }[]
-  dailySpending: {
-    date: string
-    amount: number
-  }[]
-}
+import { useReports } from '@/hooks/use-reports'
 
 const PERIOD_OPTIONS = [
   { value: 'month', label: 'Este mes' },
@@ -75,30 +39,8 @@ const PERIOD_OPTIONS = [
 ]
 
 export default function ReportsPage() {
-  const [data, setData] = useState<ReportData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [period, setPeriod] = useState('6months')
-
-  const fetchReports = async (selectedPeriod: string) => {
-    setIsLoading(true)
-    try {
-      const response = await fetch(`/api/reports?period=${selectedPeriod}`)
-      if (!response.ok) {
-        throw new Error('Error al cargar los reportes')
-      }
-      const result = await response.json()
-      setData(result.data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error desconocido'
-      toast.error(message)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchReports(period)
-  }, [period])
+  const { data, isLoading, mutate } = useReports(period)
 
   if (isLoading) {
     return (
@@ -112,7 +54,7 @@ export default function ReportsPage() {
     return (
       <div className="text-center text-muted-foreground py-12">
         <p>No hay datos disponibles para mostrar.</p>
-        <Button onClick={() => fetchReports(period)} className="mt-4">
+        <Button onClick={() => mutate()} className="mt-4">
           Reintentar
         </Button>
       </div>
