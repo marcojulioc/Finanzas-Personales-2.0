@@ -23,13 +23,12 @@ import {
   CardContent,
 } from '@/components/ui/card'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog'
+import { ResponsiveDialog } from '@/components/responsive-dialog'
+import { SwipeableTransactionItem } from '@/components/swipeable-transaction-item'
+import { FloatingActionButton } from '@/components/floating-action-button'
+import { motion } from 'framer-motion'
 import {
   Select,
   SelectContent,
@@ -276,6 +275,9 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-6">
+      {/* FAB para mobile */}
+      <FloatingActionButton onClick={openCreateDialog} />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-display font-bold">Transacciones</h1>
@@ -341,96 +343,28 @@ export default function TransactionsPage() {
           <Card>
             <CardContent className="p-0">
               <div className="divide-y">
-                {transactions.map((transaction) => {
+                {transactions.map((transaction, index) => {
                   // Buscar categoría por nombre en las categorías del usuario
                   const category = userCategories.find(
                     (cat: Category) => cat.name === transaction.category
                   )
                   return (
-                    <div
+                    <motion.div
                       key={transaction.id}
-                      className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05, duration: 0.3 }}
                     >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
-                          style={{
-                            backgroundColor: `${category?.color || '#6b7280'}20`,
-                          }}
-                        >
-                          {category?.icon || '?'}
-                        </div>
-                        <div>
-                          <p className="font-medium">
-                            {category?.name || transaction.category}
-                          </p>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span>{formatDate(transaction.date)}</span>
-                            {(transaction.bankAccount || transaction.creditCard) && (
-                              <>
-                                <span>-</span>
-                                <Badge
-                                  variant="outline"
-                                  className="font-normal"
-                                  style={{
-                                    borderColor:
-                                      transaction.bankAccount?.color ||
-                                      transaction.creditCard?.color ||
-                                      undefined,
-                                  }}
-                                >
-                                  {transaction.bankAccount?.name ||
-                                    transaction.creditCard?.name}
-                                </Badge>
-                              </>
-                            )}
-                            {transaction.description && (
-                              <>
-                                <span>-</span>
-                                <span className="truncate max-w-[150px]">
-                                  {transaction.description}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span
-                          className={`font-mono font-bold ${
-                            transaction.type === 'income'
-                              ? 'text-success'
-                              : 'text-danger'
-                          }`}
-                        >
-                          {transaction.type === 'income' ? '+' : '-'}
-                          {formatCurrency(
-                            Number(transaction.amount),
-                            transaction.currency
-                          )}
-                        </span>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(transaction)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-danger hover:text-danger"
-                            onClick={() => {
-                              setDeletingTransactionId(transaction.id)
-                              setIsDeleteDialogOpen(true)
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+                      <SwipeableTransactionItem
+                        transaction={transaction}
+                        category={category}
+                        onEdit={() => openEditDialog(transaction)}
+                        onDelete={() => {
+                          setDeletingTransactionId(transaction.id)
+                          setIsDeleteDialogOpen(true)
+                        }}
+                      />
+                    </motion.div>
                   )
                 })}
               </div>
@@ -469,18 +403,17 @@ export default function TransactionsPage() {
       )}
 
       {/* Dialog para crear/editar */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingTransaction ? 'Editar Transaccion' : 'Nueva Transaccion'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingTransaction
-                ? 'Modifica los datos de la transaccion'
-                : 'Registra un nuevo ingreso o gasto'}
-            </DialogDescription>
-          </DialogHeader>
+      <ResponsiveDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        title={editingTransaction ? 'Editar Transaccion' : 'Nueva Transaccion'}
+        description={
+          editingTransaction
+            ? 'Modifica los datos de la transaccion'
+            : 'Registra un nuevo ingreso o gasto'
+        }
+        className="max-w-lg max-h-[90vh] overflow-y-auto"
+      >
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {/* Tipo */}
@@ -719,8 +652,7 @@ export default function TransactionsPage() {
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+      </ResponsiveDialog>
 
       {/* Dialog de confirmacion para eliminar */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
