@@ -213,13 +213,12 @@ export async function POST(request: NextRequest) {
 
       // Actualizar deuda de tarjeta de crédito
       if (data.creditCardId) {
-        const balanceField = data.currency === 'MXN' ? 'balanceMXN' : 'balanceUSD'
         // Los gastos aumentan la deuda, los ingresos (pagos) la reducen
         const balanceChange = data.type === 'expense' ? data.amount : -data.amount
         await tx.creditCard.update({
           where: { id: data.creditCardId },
           data: {
-            [balanceField]: {
+            balance: {
               increment: balanceChange,
             },
           },
@@ -228,11 +227,10 @@ export async function POST(request: NextRequest) {
 
       // Si es pago de tarjeta, reducir la deuda de la tarjeta destino
       if (data.isCardPayment && data.targetCardId) {
-        const balanceField = data.currency === 'MXN' ? 'balanceMXN' : 'balanceUSD'
         await tx.creditCard.update({
           where: { id: data.targetCardId },
           data: {
-            [balanceField]: {
+            balance: {
               decrement: data.amount,
             },
           },

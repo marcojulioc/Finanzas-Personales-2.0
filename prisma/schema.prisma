@@ -164,18 +164,17 @@ model BankAccount {
 }
 
 model CreditCard {
-  id            String  @id @default(cuid())
+  id            String   @id @default(cuid())
   userId        String
-  name          String  @db.VarChar(50)
-  bankName      String  @db.VarChar(50)
-  cutOffDay     Int     @db.SmallInt
-  paymentDueDay Int     @db.SmallInt
-  limitMXN      Decimal @db.Decimal(12, 2)
-  limitUSD      Decimal @db.Decimal(12, 2)
-  balanceMXN    Decimal @db.Decimal(12, 2)
-  balanceUSD    Decimal @db.Decimal(12, 2)
-  color         String? @db.VarChar(7)
-  isActive      Boolean @default(true)
+  name          String   @db.VarChar(50)
+  bankName      String   @db.VarChar(50)
+  cutOffDay     Int      @db.SmallInt
+  paymentDueDay Int      @db.SmallInt
+  currency      Currency @default(USD)
+  creditLimit   Decimal  @db.Decimal(12, 2)
+  balance       Decimal  @db.Decimal(12, 2) @default(0)
+  color         String?  @db.VarChar(7)
+  isActive      Boolean  @default(true)
 
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions     Transaction[] @relation("CardTransactions")

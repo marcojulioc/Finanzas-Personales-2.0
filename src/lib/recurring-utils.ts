@@ -145,23 +145,21 @@ export async function generatePendingTransactions(userId: string): Promise<numbe
 
         // Update credit card balance
         if (recurring.creditCardId) {
-          const balanceField = recurring.currency === 'MXN' ? 'balanceMXN' : 'balanceUSD'
           const balanceChange = recurring.type === 'expense' ? amount : -amount
           await tx.creditCard.update({
             where: { id: recurring.creditCardId },
             data: {
-              [balanceField]: { increment: balanceChange },
+              balance: { increment: balanceChange },
             },
           })
         }
 
         // If card payment, reduce target card debt
         if (recurring.isCardPayment && recurring.targetCardId) {
-          const balanceField = recurring.currency === 'MXN' ? 'balanceMXN' : 'balanceUSD'
           await tx.creditCard.update({
             where: { id: recurring.targetCardId },
             data: {
-              [balanceField]: { decrement: amount },
+              balance: { decrement: amount },
             },
           })
         }

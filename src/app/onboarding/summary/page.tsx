@@ -42,25 +42,38 @@ export default function OnboardingSummaryPage() {
   }
 
   const calculateTotals = () => {
-    if (!state) return { totalBalance: 0, totalDebt: 0, netBalance: 0 }
+    if (!state) return { totalBalance: 0, totalDebt: 0, netBalance: 0, primaryCurrency: 'USD' }
+
+    // Find the most common currency to use as primary
+    const allCurrencies = [
+      ...state.bankAccounts.map(a => a.currency),
+      ...state.creditCards.map(c => c.currency),
+    ]
+    const currencyCount: Record<string, number> = {}
+    allCurrencies.forEach(c => { currencyCount[c] = (currencyCount[c] || 0) + 1 })
+    const primaryCurrency = Object.entries(currencyCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'USD'
+
+    // Simple conversion (exchange rate approximation)
+    const getRate = (currency: string) => {
+      if (currency === primaryCurrency) return 1
+      if (currency === 'USD' && primaryCurrency !== 'USD') return 17
+      if (currency !== 'USD' && primaryCurrency === 'USD') return 1 / 17
+      return 1
+    }
 
     const totalBalance = state.bankAccounts.reduce((sum, acc) => {
-      // Convertir USD a MXN aproximadamente para el resumen
-      const amount = acc.currency === 'USD' ? acc.balance * 17 : acc.balance
-      return sum + amount
+      return sum + acc.balance * getRate(acc.currency)
     }, 0)
 
     const totalDebt = state.creditCards.reduce((sum, card) => {
-      // Convertir USD a MXN aproximadamente para el resumen
-      const debtMXN = card.balanceMXN
-      const debtUSD = card.balanceUSD * 17
-      return sum + debtMXN + debtUSD
+      return sum + card.balance * getRate(card.currency)
     }, 0)
 
     return {
       totalBalance,
       totalDebt,
       netBalance: totalBalance - totalDebt,
+      primaryCurrency,
     }
   }
 
@@ -123,7 +136,7 @@ export default function OnboardingSummaryPage() {
     )
   }
 
-  const { totalBalance, totalDebt, netBalance } = calculateTotals()
+  const { totalBalance, totalDebt, netBalance, primaryCurrency } = calculateTotals()
   const hasData = state.bankAccounts.length > 0 || state.creditCards.length > 0
 
   return (
@@ -221,17 +234,11 @@ export default function OnboardingSummaryPage() {
                     </span>
                   </div>
                   <div className="text-right">
-                    {card.balanceMXN > 0 && (
+                    {card.balance > 0 ? (
                       <span className="font-mono text-danger">
-                        -{formatCurrency(card.balanceMXN, 'MXN')}
+                        -{formatCurrency(card.balance, card.currency)}
                       </span>
-                    )}
-                    {card.balanceUSD > 0 && (
-                      <span className="font-mono text-danger ml-2">
-                        -{formatCurrency(card.balanceUSD, 'USD')}
-                      </span>
-                    )}
-                    {card.balanceMXN === 0 && card.balanceUSD === 0 && (
+                    ) : (
                       <span className="text-muted-foreground">Sin deuda</span>
                     )}
                   </div>
@@ -253,13 +260,13 @@ export default function OnboardingSummaryPage() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Total disponible</span>
               <span className="font-mono font-medium text-success">
-                {formatCurrency(totalBalance, 'MXN')}
+                {formatCurrency(totalBalance, primaryCurrency)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Total deuda</span>
               <span className="font-mono font-medium text-danger">
-                -{formatCurrency(totalDebt, 'MXN')}
+                -{formatCurrency(totalDebt, primaryCurrency)}
               </span>
             </div>
             <Separator />
@@ -270,12 +277,12 @@ export default function OnboardingSummaryPage() {
                   netBalance >= 0 ? 'text-success' : 'text-danger'
                 }`}
               >
-                {formatCurrency(netBalance, 'MXN')}
+                {formatCurrency(netBalance, primaryCurrency)}
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              * Los montos en USD se convirtieron aproximadamente a MXN para este
-              resumen
+              * Los montos en diferentes monedas se convirtieron aproximadamente
+              a {primaryCurrency} para este resumen
             </p>
           </div>
         )}

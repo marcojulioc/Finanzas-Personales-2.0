@@ -178,10 +178,9 @@ async function main() {
       bankName: 'BBVA',
       cutOffDay: 15,
       paymentDueDay: 5,
-      limitMXN: 80000.00,
-      limitUSD: 0,
-      balanceMXN: 12500.00,
-      balanceUSD: 0,
+      currency: Currency.MXN,
+      creditLimit: 80000.00,
+      balance: 12500.00,
       color: COLORS.blue,
       isActive: true,
     },
@@ -194,10 +193,9 @@ async function main() {
       bankName: 'Nu',
       cutOffDay: 20,
       paymentDueDay: 10,
-      limitMXN: 45000.00,
-      limitUSD: 0,
-      balanceMXN: 8750.00,
-      balanceUSD: 0,
+      currency: Currency.MXN,
+      creditLimit: 45000.00,
+      balance: 8750.00,
       color: COLORS.purple,
       isActive: true,
     },
@@ -210,10 +208,9 @@ async function main() {
       bankName: 'American Express',
       cutOffDay: 25,
       paymentDueDay: 15,
-      limitMXN: 150000.00,
-      limitUSD: 5000.00,
-      balanceMXN: 25000.00,
-      balanceUSD: 350.00,
+      currency: Currency.MXN,
+      creditLimit: 150000.00,
+      balance: 25000.00,
       color: COLORS.orange,
       isActive: true,
     },
@@ -624,7 +621,7 @@ async function main() {
   console.log('💳 Deudas en tarjetas:')
   console.log('   • BBVA Azul: $12,500 MXN')
   console.log('   • Nu Card: $8,750 MXN')
-  console.log('   • Amex Gold: $25,000 MXN + $350 USD')
+  console.log('   • Amex Gold: $25,000 MXN')
   console.log('')
 }
 

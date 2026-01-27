@@ -103,8 +103,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
       // Revertir el efecto en tarjeta de crédito
       if (existingTransaction.creditCardId) {
-        const oldBalanceField =
-          existingTransaction.currency === 'MXN' ? 'balanceMXN' : 'balanceUSD'
         const oldBalanceChange =
           existingTransaction.type === 'expense'
             ? -Number(existingTransaction.amount)
@@ -112,7 +110,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         await tx.creditCard.update({
           where: { id: existingTransaction.creditCardId },
           data: {
-            [oldBalanceField]: {
+            balance: {
               increment: oldBalanceChange,
             },
           },
@@ -121,12 +119,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
       // Revertir pago de tarjeta anterior
       if (existingTransaction.isCardPayment && existingTransaction.targetCardId) {
-        const oldBalanceField =
-          existingTransaction.currency === 'MXN' ? 'balanceMXN' : 'balanceUSD'
         await tx.creditCard.update({
           where: { id: existingTransaction.targetCardId },
           data: {
-            [oldBalanceField]: {
+            balance: {
               increment: Number(existingTransaction.amount),
             },
           },
@@ -173,12 +169,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
       // Aplicar el nuevo efecto en tarjeta de crédito
       if (data.creditCardId) {
-        const newBalanceField = data.currency === 'MXN' ? 'balanceMXN' : 'balanceUSD'
         const newBalanceChange = data.type === 'expense' ? data.amount : -data.amount
         await tx.creditCard.update({
           where: { id: data.creditCardId },
           data: {
-            [newBalanceField]: {
+            balance: {
               increment: newBalanceChange,
             },
           },
@@ -187,11 +182,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
       // Aplicar nuevo pago de tarjeta
       if (data.isCardPayment && data.targetCardId) {
-        const newBalanceField = data.currency === 'MXN' ? 'balanceMXN' : 'balanceUSD'
         await tx.creditCard.update({
           where: { id: data.targetCardId },
           data: {
-            [newBalanceField]: {
+            balance: {
               decrement: data.amount,
             },
           },
@@ -253,8 +247,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
       // Revertir el efecto en tarjeta de crédito
       if (existingTransaction.creditCardId) {
-        const balanceField =
-          existingTransaction.currency === 'MXN' ? 'balanceMXN' : 'balanceUSD'
         const balanceChange =
           existingTransaction.type === 'expense'
             ? -Number(existingTransaction.amount)
@@ -262,7 +254,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         await tx.creditCard.update({
           where: { id: existingTransaction.creditCardId },
           data: {
-            [balanceField]: {
+            balance: {
               increment: balanceChange,
             },
           },
@@ -271,12 +263,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
       // Revertir pago de tarjeta
       if (existingTransaction.isCardPayment && existingTransaction.targetCardId) {
-        const balanceField =
-          existingTransaction.currency === 'MXN' ? 'balanceMXN' : 'balanceUSD'
         await tx.creditCard.update({
           where: { id: existingTransaction.targetCardId },
           data: {
-            [balanceField]: {
+            balance: {
               increment: Number(existingTransaction.amount),
             },
           },

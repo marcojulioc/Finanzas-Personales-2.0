@@ -51,10 +51,9 @@ export async function POST(request: NextRequest) {
         bankName: result.data.bankName,
         cutOffDay: result.data.cutOffDay,
         paymentDueDay: result.data.paymentDueDay,
-        limitMXN: result.data.limitMXN,
-        limitUSD: result.data.limitUSD,
-        balanceMXN: result.data.balanceMXN,
-        balanceUSD: result.data.balanceUSD,
+        currency: result.data.currency,
+        creditLimit: result.data.creditLimit,
+        balance: result.data.balance,
         color: result.data.color,
       },
     })

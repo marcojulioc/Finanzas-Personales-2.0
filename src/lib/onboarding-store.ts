@@ -15,10 +15,9 @@ export interface CreditCardDraft {
   bankName: string
   cutOffDay: number
   paymentDueDay: number
-  limitMXN: number
-  limitUSD: number
-  balanceMXN: number
-  balanceUSD: number
+  currency: string
+  creditLimit: number
+  balance: number
   color?: string
 }
 

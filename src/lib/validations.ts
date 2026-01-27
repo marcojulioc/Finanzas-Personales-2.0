@@ -81,10 +81,9 @@ export const creditCardSchema = z.object({
     .int()
     .min(1, 'El día de pago debe estar entre 1 y 31')
     .max(31, 'El día de pago debe estar entre 1 y 31'),
-  limitMXN: z.number().min(0, 'El límite no puede ser negativo').default(0),
-  limitUSD: z.number().min(0, 'El límite no puede ser negativo').default(0),
-  balanceMXN: z.number().min(0, 'La deuda no puede ser negativa').default(0),
-  balanceUSD: z.number().min(0, 'La deuda no puede ser negativa').default(0),
+  currency: currencyEnum,
+  creditLimit: z.number().min(0, 'El límite no puede ser negativo'),
+  balance: z.number().min(0, 'La deuda no puede ser negativa').default(0),
   color: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, 'Color inválido')

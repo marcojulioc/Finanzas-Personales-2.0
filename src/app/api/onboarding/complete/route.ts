@@ -28,10 +28,9 @@ const creditCardSchema = z.object({
   bankName: z.string().min(2).max(50),
   cutOffDay: z.number().int().min(1).max(31),
   paymentDueDay: z.number().int().min(1).max(31),
-  limitMXN: z.number().min(0),
-  limitUSD: z.number().min(0),
-  balanceMXN: z.number().min(0),
-  balanceUSD: z.number().min(0),
+  currency: z.enum(VALID_CURRENCIES),
+  creditLimit: z.number().min(0),
+  balance: z.number().min(0),
   color: z.string().optional(),
 })
 
@@ -113,10 +112,9 @@ export async function POST(request: Request) {
             bankName: card.bankName,
             cutOffDay: card.cutOffDay,
             paymentDueDay: card.paymentDueDay,
-            limitMXN: card.limitMXN,
-            limitUSD: card.limitUSD,
-            balanceMXN: card.balanceMXN,
-            balanceUSD: card.balanceUSD,
+            currency: card.currency,
+            creditLimit: card.creditLimit,
+            balance: card.balance,
             color: card.color,
           })),
         })

@@ -7,6 +7,7 @@ import { Plus, Trash2, Pencil, CreditCard as CreditCardIcon } from 'lucide-react
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { useCards, type CreditCard } from '@/hooks/use-cards'
+import { useUserCurrencies } from '@/hooks/use-user-currencies'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -51,16 +52,16 @@ const cardSchema = z.object({
   bankName: z.string().min(1, 'Selecciona un banco'),
   cutOffDay: z.number().int().min(1).max(31),
   paymentDueDay: z.number().int().min(1).max(31),
-  limitMXN: z.number().min(0),
-  limitUSD: z.number().min(0),
-  balanceMXN: z.number().min(0),
-  balanceUSD: z.number().min(0),
+  currency: z.string().min(1, 'Selecciona una moneda'),
+  creditLimit: z.number().min(0),
+  balance: z.number().min(0),
 })
 
 type CardFormData = z.infer<typeof cardSchema>
 
 export default function CardsPage() {
   const { cards, isLoading, mutate } = useCards()
+  const { currencyOptions, primaryCurrency } = useUserCurrencies()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null)
@@ -79,10 +80,9 @@ export default function CardsPage() {
     defaultValues: {
       cutOffDay: 15,
       paymentDueDay: 25,
-      limitMXN: 0,
-      limitUSD: 0,
-      balanceMXN: 0,
-      balanceUSD: 0,
+      currency: primaryCurrency || 'USD',
+      creditLimit: 0,
+      balance: 0,
     },
   })
 
@@ -96,10 +96,9 @@ export default function CardsPage() {
       bankName: '',
       cutOffDay: 15,
       paymentDueDay: 25,
-      limitMXN: 0,
-      limitUSD: 0,
-      balanceMXN: 0,
-      balanceUSD: 0,
+      currency: primaryCurrency || 'USD',
+      creditLimit: 0,
+      balance: 0,
     })
     setIsDialogOpen(true)
   }
@@ -112,10 +111,9 @@ export default function CardsPage() {
       bankName: card.bankName,
       cutOffDay: card.cutOffDay,
       paymentDueDay: card.paymentDueDay,
-      limitMXN: Number(card.limitMXN),
-      limitUSD: Number(card.limitUSD),
-      balanceMXN: Number(card.balanceMXN),
-      balanceUSD: Number(card.balanceUSD),
+      currency: card.currency,
+      creditLimit: Number(card.creditLimit),
+      balance: Number(card.balance),
     })
     setIsDialogOpen(true)
   }
@@ -235,11 +233,9 @@ export default function CardsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {cards.map((card) => {
-            const totalDebt = Number(card.balanceMXN) + Number(card.balanceUSD) * 17
-            const totalLimit = Number(card.limitMXN) + Number(card.limitUSD) * 17
-            const usagePercent = getUsagePercent(totalDebt, totalLimit)
-            const usageMXN = getUsagePercent(Number(card.balanceMXN), Number(card.limitMXN))
-            const usageUSD = getUsagePercent(Number(card.balanceUSD), Number(card.limitUSD))
+            const balance = Number(card.balance)
+            const limit = Number(card.creditLimit)
+            const usagePercent = getUsagePercent(balance, limit)
 
             return (
               <Card key={card.id} className="relative overflow-hidden">
@@ -292,62 +288,38 @@ export default function CardsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Pesos */}
-                  {(Number(card.limitMXN) > 0 || Number(card.balanceMXN) > 0) && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Pesos (MXN)</span>
-                        <span className="font-mono">
-                          {formatCurrency(Number(card.balanceMXN), 'MXN')} /{' '}
-                          {formatCurrency(Number(card.limitMXN), 'MXN')}
-                        </span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={`h-full transition-all ${getUsageColor(usageMXN)}`}
-                          style={{ width: `${usageMXN}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground text-right">
-                        {usageMXN.toFixed(0)}% utilizado
-                      </p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        Límite ({card.currency})
+                      </span>
+                      <span className="font-mono">
+                        {formatCurrency(balance, card.currency)} /{' '}
+                        {formatCurrency(limit, card.currency)}
+                      </span>
                     </div>
-                  )}
-
-                  {/* Dólares */}
-                  {(Number(card.limitUSD) > 0 || Number(card.balanceUSD) > 0) && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Dólares (USD)</span>
-                        <span className="font-mono">
-                          {formatCurrency(Number(card.balanceUSD), 'USD')} /{' '}
-                          {formatCurrency(Number(card.limitUSD), 'USD')}
-                        </span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={`h-full transition-all ${getUsageColor(usageUSD)}`}
-                          style={{ width: `${usageUSD}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground text-right">
-                        {usageUSD.toFixed(0)}% utilizado
-                      </p>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all ${getUsageColor(usagePercent)}`}
+                        style={{ width: `${usagePercent}%` }}
+                      />
                     </div>
-                  )}
+                    <p className="text-xs text-muted-foreground text-right">
+                      {usagePercent.toFixed(0)}% utilizado
+                    </p>
+                  </div>
 
-                  {/* Deuda total */}
                   <div className="pt-2 border-t">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">
-                        Deuda total
+                        Deuda actual
                       </span>
                       <span className="text-xl font-bold font-mono text-danger">
-                        -{formatCurrency(totalDebt, 'MXN')}
+                        -{formatCurrency(balance, card.currency)}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Uso total: {usagePercent.toFixed(0)}%
+                      Disponible: {formatCurrency(limit - balance, card.currency)}
                     </p>
                   </div>
                 </CardContent>
@@ -447,55 +419,45 @@ export default function CardsPage() {
               </div>
             </div>
 
-            <div className="border rounded-lg p-4 space-y-4">
-              <p className="font-medium">Pesos (MXN)</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="limitMXN">Límite</Label>
-                  <Input
-                    id="limitMXN"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    {...register('limitMXN', { valueAsNumber: true })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="balanceMXN">Deuda actual</Label>
-                  <Input
-                    id="balanceMXN"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    {...register('balanceMXN', { valueAsNumber: true })}
-                  />
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label>Moneda</Label>
+              <Select
+                value={watch('currency')}
+                onValueChange={(value) => setValue('currency', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona moneda" />
+                </SelectTrigger>
+                <SelectContent>
+                  {currencyOptions.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                      {currency.flag} {currency.name} ({currency.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="border rounded-lg p-4 space-y-4">
-              <p className="font-medium">Dólares (USD) - Opcional</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="limitUSD">Límite</Label>
-                  <Input
-                    id="limitUSD"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    {...register('limitUSD', { valueAsNumber: true })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="balanceUSD">Deuda actual</Label>
-                  <Input
-                    id="balanceUSD"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    {...register('balanceUSD', { valueAsNumber: true })}
-                  />
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="creditLimit">Límite de crédito</Label>
+                <Input
+                  id="creditLimit"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...register('creditLimit', { valueAsNumber: true })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="balance">Deuda actual</Label>
+                <Input
+                  id="balance"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...register('balance', { valueAsNumber: true })}
+                />
               </div>
             </div>
 

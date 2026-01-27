@@ -90,7 +90,11 @@ const getDashboardData = cache(async (userId: string) => {
   }, 0)
 
   const totalDebtMXN = creditCards.reduce((sum, card) => {
-    return sum + Number(card.balanceMXN) + Number(card.balanceUSD) * exchangeRate
+    const amount =
+      card.currency === 'USD'
+        ? Number(card.balance) * exchangeRate
+        : Number(card.balance)
+    return sum + amount
   }, 0)
 
   // Calcular alertas de tarjetas
@@ -438,12 +442,10 @@ export default async function DashboardPage() {
               </p>
             ) : (
               creditCards.map((card) => {
-                const totalDebt =
-                  Number(card.balanceMXN) + Number(card.balanceUSD) * 17
-                const totalLimit =
-                  Number(card.limitMXN) + Number(card.limitUSD) * 17
+                const balance = Number(card.balance)
+                const limit = Number(card.creditLimit)
                 const usagePercent =
-                  totalLimit > 0 ? (totalDebt / totalLimit) * 100 : 0
+                  limit > 0 ? (balance / limit) * 100 : 0
 
                 return (
                   <div
@@ -464,7 +466,7 @@ export default async function DashboardPage() {
                         </div>
                       </div>
                       <span className="font-mono font-medium text-danger">
-                        -{formatCurrency(totalDebt)}
+                        -{formatCurrency(balance, card.currency)}
                       </span>
                     </div>
                     <div className="space-y-1">

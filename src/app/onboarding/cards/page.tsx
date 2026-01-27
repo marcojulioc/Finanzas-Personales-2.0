@@ -40,10 +40,9 @@ const cardSchema = z.object({
   bankName: z.string().min(1, 'Selecciona un banco'),
   cutOffDay: z.number().int().min(1).max(31),
   paymentDueDay: z.number().int().min(1).max(31),
-  limitMXN: z.number().min(0),
-  limitUSD: z.number().min(0),
-  balanceMXN: z.number().min(0),
-  balanceUSD: z.number().min(0),
+  currency: z.string().min(1, 'Selecciona una moneda'),
+  creditLimit: z.number().min(0),
+  balance: z.number().min(0),
 })
 
 type CardFormData = z.infer<typeof cardSchema>
@@ -67,10 +66,9 @@ export default function OnboardingCardsPage() {
     defaultValues: {
       cutOffDay: 15,
       paymentDueDay: 25,
-      limitMXN: 0,
-      limitUSD: 0,
-      balanceMXN: 0,
-      balanceUSD: 0,
+      currency: 'USD',
+      creditLimit: 0,
+      balance: 0,
     },
   })
 
@@ -87,10 +85,12 @@ export default function OnboardingCardsPage() {
       .then((data) => {
         if (data.data?.primaryCurrency) {
           setPrimaryCurrency(data.data.primaryCurrency)
+          // Set default currency for form
+          setValue('currency', data.data.primaryCurrency)
         }
       })
       .catch(console.error)
-  }, [])
+  }, [setValue])
 
   const onSubmit = (data: CardFormData) => {
     const state = getOnboardingState()
@@ -122,10 +122,9 @@ export default function OnboardingCardsPage() {
       bankName: '',
       cutOffDay: 15,
       paymentDueDay: 25,
-      limitMXN: 0,
-      limitUSD: 0,
-      balanceMXN: 0,
-      balanceUSD: 0,
+      currency: primaryCurrency,
+      creditLimit: 0,
+      balance: 0,
     })
   }
 
@@ -143,10 +142,9 @@ export default function OnboardingCardsPage() {
     setValue('bankName', card.bankName)
     setValue('cutOffDay', card.cutOffDay)
     setValue('paymentDueDay', card.paymentDueDay)
-    setValue('limitMXN', card.limitMXN)
-    setValue('limitUSD', card.limitUSD)
-    setValue('balanceMXN', card.balanceMXN)
-    setValue('balanceUSD', card.balanceUSD)
+    setValue('currency', card.currency)
+    setValue('creditLimit', card.creditLimit)
+    setValue('balance', card.balance)
   }
 
   const handleCancel = () => {
@@ -170,10 +168,11 @@ export default function OnboardingCardsPage() {
     }).format(amount)
   }
 
-  const getPrimaryCurrencyLabel = () => {
-    const currency = CURRENCIES[primaryCurrency]
-    return currency ? `${currency.name} (${primaryCurrency})` : `Moneda local (${primaryCurrency})`
-  }
+  const currencyOptions = Object.entries(CURRENCIES).map(([code, data]) => ({
+    code,
+    name: data.name,
+    flag: data.flag,
+  }))
 
   const days = Array.from({ length: 31 }, (_, i) => i + 1)
 
@@ -233,41 +232,20 @@ export default function OnboardingCardsPage() {
                     </Button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  {(card.limitMXN > 0 || card.balanceMXN > 0) && (
-                    <div>
-                      <p className="text-muted-foreground">{getPrimaryCurrencyLabel()}</p>
-                      <p>
-                        Deuda:{' '}
-                        <span className="font-mono text-danger">
-                          {formatCurrency(card.balanceMXN, primaryCurrency)}
-                        </span>
-                      </p>
-                      <p>
-                        Límite:{' '}
-                        <span className="font-mono">
-                          {formatCurrency(card.limitMXN, primaryCurrency)}
-                        </span>
-                      </p>
-                    </div>
-                  )}
-                  {(card.limitUSD > 0 || card.balanceUSD > 0) && (
-                    <div>
-                      <p className="text-muted-foreground">Dólares (USD)</p>
-                      <p>
-                        Deuda:{' '}
-                        <span className="font-mono text-danger">
-                          {formatCurrency(card.balanceUSD, 'USD')}
-                        </span>
-                      </p>
-                      <p>
-                        Límite:{' '}
-                        <span className="font-mono">
-                          {formatCurrency(card.limitUSD, 'USD')}
-                        </span>
-                      </p>
-                    </div>
-                  )}
+                <div className="text-sm">
+                  <p className="text-muted-foreground">{card.currency}</p>
+                  <p>
+                    Deuda:{' '}
+                    <span className="font-mono text-danger">
+                      {formatCurrency(card.balance, card.currency)}
+                    </span>
+                  </p>
+                  <p>
+                    Límite:{' '}
+                    <span className="font-mono">
+                      {formatCurrency(card.creditLimit, card.currency)}
+                    </span>
+                  </p>
                 </div>
               </div>
             ))}
@@ -353,59 +331,50 @@ export default function OnboardingCardsPage() {
               </div>
             </div>
 
-            <div className="border rounded-lg p-4 space-y-4">
-              <p className="font-medium">{getPrimaryCurrencyLabel()}</p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="limitMXN">Límite de crédito</Label>
-                  <Input
-                    id="limitMXN"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    {...register('limitMXN', { valueAsNumber: true })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="balanceMXN">Deuda actual</Label>
-                  <Input
-                    id="balanceMXN"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    {...register('balanceMXN', { valueAsNumber: true })}
-                  />
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label>Moneda</Label>
+              <Select
+                value={watch('currency')}
+                onValueChange={(value) => setValue('currency', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona moneda" />
+                </SelectTrigger>
+                <SelectContent>
+                  {currencyOptions.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                      {currency.flag} {currency.name} ({currency.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.currency && (
+                <p className="text-sm text-danger">{errors.currency.message}</p>
+              )}
             </div>
 
-            <div className="border rounded-lg p-4 space-y-4">
-              <p className="font-medium">Dólares (USD) - Opcional</p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="limitUSD">Límite de crédito</Label>
-                  <Input
-                    id="limitUSD"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    {...register('limitUSD', { valueAsNumber: true })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="balanceUSD">Deuda actual</Label>
-                  <Input
-                    id="balanceUSD"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    {...register('balanceUSD', { valueAsNumber: true })}
-                  />
-                </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="creditLimit">Límite de crédito</Label>
+                <Input
+                  id="creditLimit"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  {...register('creditLimit', { valueAsNumber: true })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="balance">Deuda actual</Label>
+                <Input
+                  id="balance"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  {...register('balance', { valueAsNumber: true })}
+                />
               </div>
             </div>
 
