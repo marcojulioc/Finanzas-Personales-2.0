@@ -2,7 +2,7 @@
 
 import useSWR from 'swr'
 
-interface CreditCard {
+export interface CreditCard {
   id: string
   name: string
   bankName: string

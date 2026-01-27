@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plus, Trash2, Pencil, CreditCard } from 'lucide-react'
+import { Plus, Trash2, Pencil, CreditCard as CreditCardIcon } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import { useCards, type CreditCard } from '@/hooks/use-cards'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,20 +45,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import { COMMON_BANKS, ACCOUNT_COLORS } from '@/lib/onboarding-store'
 
-interface CreditCardData {
-  id: string
-  name: string
-  bankName: string
-  cutOffDay: number
-  paymentDueDay: number
-  limitMXN: number
-  limitUSD: number
-  balanceMXN: number
-  balanceUSD: number
-  color: string | null
-  isActive: boolean
-}
-
 const cardSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
   bankName: z.string().min(1, 'Selecciona un banco'),
@@ -72,11 +59,10 @@ const cardSchema = z.object({
 type CardFormData = z.infer<typeof cardSchema>
 
 export default function CardsPage() {
-  const [cards, setCards] = useState<CreditCardData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { cards, isLoading, mutate } = useCards()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [editingCard, setEditingCard] = useState<CreditCardData | null>(null)
+  const [editingCard, setEditingCard] = useState<CreditCard | null>(null)
   const [deletingCardId, setDeletingCardId] = useState<string | null>(null)
   const [selectedColor, setSelectedColor] = useState<string>(ACCOUNT_COLORS[2])
 
@@ -101,24 +87,6 @@ export default function CardsPage() {
 
   const days = Array.from({ length: 31 }, (_, i) => i + 1)
 
-  const fetchCards = async () => {
-    try {
-      const response = await fetch('/api/cards')
-      const result = await response.json()
-      if (result.data) {
-        setCards(result.data)
-      }
-    } catch (error) {
-      console.error('Error fetching cards:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchCards()
-  }, [])
-
   const openCreateDialog = () => {
     setEditingCard(null)
     setSelectedColor(ACCOUNT_COLORS[(cards.length + 2) % ACCOUNT_COLORS.length] || ACCOUNT_COLORS[0])
@@ -135,7 +103,7 @@ export default function CardsPage() {
     setIsDialogOpen(true)
   }
 
-  const openEditDialog = (card: CreditCardData) => {
+  const openEditDialog = (card: CreditCard) => {
     setEditingCard(card)
     setSelectedColor(card.color || ACCOUNT_COLORS[2])
     reset({
@@ -182,7 +150,7 @@ export default function CardsPage() {
       }
 
       setIsDialogOpen(false)
-      fetchCards()
+      mutate()
     } catch (error) {
       console.error('Error saving card:', error)
       toast.error(error instanceof Error ? error.message : 'Error al guardar la tarjeta')
@@ -206,7 +174,7 @@ export default function CardsPage() {
       toast.success('Tarjeta eliminada correctamente')
       setIsDeleteDialogOpen(false)
       setDeletingCardId(null)
-      fetchCards()
+      mutate()
     } catch (error) {
       console.error('Error deleting card:', error)
       toast.error('Error al eliminar la tarjeta')
@@ -260,7 +228,7 @@ export default function CardsPage() {
       {cards.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <CreditCard className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <CreditCardIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
               No tienes tarjetas registradas
             </p>
@@ -294,7 +262,7 @@ export default function CardsPage() {
                           backgroundColor: `${card.color || ACCOUNT_COLORS[2]}20`,
                         }}
                       >
-                        <CreditCard
+                        <CreditCardIcon
                           className="w-5 h-5"
                           style={{ color: card.color || ACCOUNT_COLORS[2] }}
                         />

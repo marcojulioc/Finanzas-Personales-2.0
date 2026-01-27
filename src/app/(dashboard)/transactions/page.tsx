@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -21,9 +21,6 @@ import { Label } from '@/components/ui/label'
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card'
 import {
   Dialog,
@@ -51,21 +48,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
-import { getCategoryById, type Category } from '@/lib/categories'
+import { getCategoryById } from '@/lib/categories'
 import { useUserCurrencies } from '@/hooks/use-user-currencies'
-import { CURRENCIES } from '@/lib/currencies'
-
-interface BankAccount {
-  id: string
-  name: string
-  color: string | null
-}
-
-interface CreditCardData {
-  id: string
-  name: string
-  color: string | null
-}
+import { useTransactions } from '@/hooks/use-transactions'
+import { useAccounts } from '@/hooks/use-accounts'
+import { useCards } from '@/hooks/use-cards'
+import { useCategories } from '@/hooks/use-categories'
 
 interface Transaction {
   id: string
@@ -79,15 +67,8 @@ interface Transaction {
   creditCardId: string | null
   isCardPayment: boolean
   targetCardId: string | null
-  bankAccount: BankAccount | null
-  creditCard: CreditCardData | null
-}
-
-interface Pagination {
-  page: number
-  limit: number
-  total: number
-  totalPages: number
+  bankAccount: { id: string; name: string; color: string | null } | null
+  creditCard: { id: string; name: string; color: string | null } | null
 }
 
 const transactionSchema = z.object({
@@ -107,28 +88,29 @@ const transactionSchema = z.object({
 type TransactionFormData = z.infer<typeof transactionSchema>
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [pagination, setPagination] = useState<Pagination>({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 0,
-  })
-  const [accounts, setAccounts] = useState<BankAccount[]>([])
-  const [cards, setCards] = useState<CreditCardData[]>([])
-  const [userCategories, setUserCategories] = useState<Category[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  // Filters and pagination state
+  const [page, setPage] = useState(1)
+  const [filterType, setFilterType] = useState<string>('all')
+  const [filterCategory, setFilterCategory] = useState<string>('all')
+
+  // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null)
 
+  // SWR hooks
+  const { transactions, pagination, isLoading, mutate } = useTransactions({
+    page,
+    type: filterType,
+    category: filterCategory,
+  })
+  const { accounts } = useAccounts()
+  const { cards } = useCards()
+  const { categories: userCategories, expenseCategories, incomeCategories } = useCategories()
+
   // User currencies
   const { currencyOptions, primaryCurrency } = useUserCurrencies()
-
-  // Filtros
-  const [filterType, setFilterType] = useState<string>('all')
-  const [filterCategory, setFilterCategory] = useState<string>('all')
 
   const {
     register,
@@ -152,53 +134,16 @@ export default function TransactionsPage() {
   const watchSourceType = watch('sourceType')
   const watchIsCardPayment = watch('isCardPayment')
 
-  const fetchTransactions = async (page = 1) => {
-    try {
-      const params = new URLSearchParams({ page: page.toString(), limit: '20' })
-      if (filterType !== 'all') params.append('type', filterType)
-      if (filterCategory !== 'all') params.append('category', filterCategory)
-
-      const response = await fetch(`/api/transactions?${params}`)
-      const result = await response.json()
-      if (result.data) {
-        setTransactions(result.data)
-        setPagination(result.pagination)
-      }
-    } catch (error) {
-      console.error('Error fetching transactions:', error)
-    } finally {
-      setIsLoading(false)
-    }
+  // Filter handlers that reset page to 1
+  const handleFilterTypeChange = (value: string) => {
+    setFilterType(value)
+    setPage(1)
   }
 
-  const fetchAccountsAndCards = async () => {
-    try {
-      const [accountsRes, cardsRes, categoriesRes] = await Promise.all([
-        fetch('/api/accounts'),
-        fetch('/api/cards'),
-        fetch('/api/categories'),
-      ])
-      const [accountsData, cardsData, categoriesData] = await Promise.all([
-        accountsRes.json(),
-        cardsRes.json(),
-        categoriesRes.json(),
-      ])
-      setAccounts(accountsData.data || [])
-      setCards(cardsData.data || [])
-      setUserCategories(categoriesData.data || [])
-    } catch (error) {
-      console.error('Error fetching accounts/cards/categories:', error)
-    }
+  const handleFilterCategoryChange = (value: string) => {
+    setFilterCategory(value)
+    setPage(1)
   }
-
-  useEffect(() => {
-    fetchTransactions()
-    fetchAccountsAndCards()
-  }, [])
-
-  useEffect(() => {
-    fetchTransactions(1)
-  }, [filterType, filterCategory])
 
   const openCreateDialog = () => {
     setEditingTransaction(null)
@@ -268,7 +213,7 @@ export default function TransactionsPage() {
           const result = await response.json()
           throw new Error(result.error || 'Error al actualizar')
         }
-        toast.success('Transacción actualizada correctamente')
+        toast.success('Transaccion actualizada correctamente')
       } else {
         const response = await fetch('/api/transactions', {
           method: 'POST',
@@ -280,14 +225,14 @@ export default function TransactionsPage() {
           const result = await response.json()
           throw new Error(result.error || 'Error al crear')
         }
-        toast.success('Transacción registrada correctamente')
+        toast.success('Transaccion registrada correctamente')
       }
 
       setIsDialogOpen(false)
-      fetchTransactions(pagination.page)
+      mutate()
     } catch (error) {
       console.error('Error saving transaction:', error)
-      toast.error(error instanceof Error ? error.message : 'Error al guardar la transacción')
+      toast.error(error instanceof Error ? error.message : 'Error al guardar la transaccion')
     }
   }
 
@@ -304,13 +249,13 @@ export default function TransactionsPage() {
         throw new Error(result.error || 'Error al eliminar')
       }
 
-      toast.success('Transacción eliminada correctamente')
+      toast.success('Transaccion eliminada correctamente')
       setIsDeleteDialogOpen(false)
       setDeletingTransactionId(null)
-      fetchTransactions(pagination.page)
+      mutate()
     } catch (error) {
       console.error('Error deleting transaction:', error)
-      toast.error(error instanceof Error ? error.message : 'Error al eliminar la transacción')
+      toast.error(error instanceof Error ? error.message : 'Error al eliminar la transaccion')
     }
   }
 
@@ -329,8 +274,7 @@ export default function TransactionsPage() {
     })
   }
 
-  const expenseCategories = userCategories.filter((c) => c.type === 'expense')
-  const incomeCategories = userCategories.filter((c) => c.type === 'income')
+  // Use filtered categories from hook based on transaction type
   const categories = watchType === 'expense' ? expenseCategories : incomeCategories
 
   if (isLoading) {
@@ -355,7 +299,7 @@ export default function TransactionsPage() {
         </div>
         <Button onClick={openCreateDialog}>
           <Plus className="w-4 h-4 mr-2" />
-          Nueva Transacción
+          Nueva Transaccion
         </Button>
       </div>
 
@@ -367,7 +311,7 @@ export default function TransactionsPage() {
               <Filter className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">Filtros:</span>
             </div>
-            <Select value={filterType} onValueChange={setFilterType}>
+            <Select value={filterType} onValueChange={handleFilterTypeChange}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
@@ -377,9 +321,9 @@ export default function TransactionsPage() {
                 <SelectItem value="expense">Gastos</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <Select value={filterCategory} onValueChange={handleFilterCategoryChange}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Categoría" />
+                <SelectValue placeholder="Categoria" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas</SelectItem>
@@ -402,7 +346,7 @@ export default function TransactionsPage() {
             <p className="text-muted-foreground">No hay transacciones</p>
             <Button className="mt-4" onClick={openCreateDialog}>
               <Plus className="w-4 h-4 mr-2" />
-              Registrar tu primera transacción
+              Registrar tu primera transaccion
             </Button>
           </CardContent>
         </Card>
@@ -425,7 +369,7 @@ export default function TransactionsPage() {
                             backgroundColor: `${category?.color || '#6b7280'}20`,
                           }}
                         >
-                          {category?.icon || '❓'}
+                          {category?.icon || '?'}
                         </div>
                         <div>
                           <p className="font-medium">
@@ -435,7 +379,7 @@ export default function TransactionsPage() {
                             <span>{formatDate(transaction.date)}</span>
                             {(transaction.bankAccount || transaction.creditCard) && (
                               <>
-                                <span>•</span>
+                                <span>-</span>
                                 <Badge
                                   variant="outline"
                                   className="font-normal"
@@ -453,7 +397,7 @@ export default function TransactionsPage() {
                             )}
                             {transaction.description && (
                               <>
-                                <span>•</span>
+                                <span>-</span>
                                 <span className="truncate max-w-[150px]">
                                   {transaction.description}
                                 </span>
@@ -504,7 +448,7 @@ export default function TransactionsPage() {
             </CardContent>
           </Card>
 
-          {/* Paginación */}
+          {/* Paginacion */}
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
@@ -516,7 +460,7 @@ export default function TransactionsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => fetchTransactions(pagination.page - 1)}
+                  onClick={() => setPage(page - 1)}
                   disabled={pagination.page <= 1}
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -524,7 +468,7 @@ export default function TransactionsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => fetchTransactions(pagination.page + 1)}
+                  onClick={() => setPage(page + 1)}
                   disabled={pagination.page >= pagination.totalPages}
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -540,11 +484,11 @@ export default function TransactionsPage() {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingTransaction ? 'Editar Transacción' : 'Nueva Transacción'}
+              {editingTransaction ? 'Editar Transaccion' : 'Nueva Transaccion'}
             </DialogTitle>
             <DialogDescription>
               {editingTransaction
-                ? 'Modifica los datos de la transacción'
+                ? 'Modifica los datos de la transaccion'
                 : 'Registra un nuevo ingreso o gasto'}
             </DialogDescription>
           </DialogHeader>
@@ -690,15 +634,15 @@ export default function TransactionsPage() {
               </div>
             </div>
 
-            {/* Categoría */}
+            {/* Categoria */}
             <div className="space-y-2">
-              <Label>Categoría</Label>
+              <Label>Categoria</Label>
               <Select
                 value={watch('category')}
                 onValueChange={(value) => setValue('category', value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una categoría" />
+                  <SelectValue placeholder="Selecciona una categoria" />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((cat) => (
@@ -726,7 +670,7 @@ export default function TransactionsPage() {
                       className="rounded border-gray-300"
                     />
                     <Label htmlFor="isCardPayment" className="cursor-pointer">
-                      Es pago de tarjeta de crédito
+                      Es pago de tarjeta de credito
                     </Label>
                   </div>
 
@@ -750,9 +694,9 @@ export default function TransactionsPage() {
                 </div>
               )}
 
-            {/* Descripción */}
+            {/* Descripcion */}
             <div className="space-y-2">
-              <Label htmlFor="description">Descripción (opcional)</Label>
+              <Label htmlFor="description">Descripcion (opcional)</Label>
               <Input
                 id="description"
                 placeholder="Ej: Almuerzo con amigos"
@@ -782,21 +726,21 @@ export default function TransactionsPage() {
                   ? 'Guardando...'
                   : editingTransaction
                   ? 'Guardar cambios'
-                  : 'Crear transacción'}
+                  : 'Crear transaccion'}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de confirmación para eliminar */}
+      {/* Dialog de confirmacion para eliminar */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar transacción?</AlertDialogTitle>
+            <AlertDialogTitle>Eliminar transaccion?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. El balance de la cuenta/tarjeta
-              asociada será actualizado.
+              Esta accion no se puede deshacer. El balance de la cuenta/tarjeta
+              asociada sera actualizado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
