@@ -28,7 +28,8 @@ export function useUserCurrencies(): UserCurrenciesData {
     }
   )
 
-  const currencies = data?.currencies ?? ['USD']
+  // Memoize to ensure stable references
+  const currencies = useMemo(() => data?.currencies ?? ['USD'], [data?.currencies])
   const primaryCurrency = data?.primaryCurrency ?? 'USD'
 
   const currencyOptions = useMemo(() => {

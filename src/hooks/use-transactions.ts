@@ -2,7 +2,7 @@
 
 import useSWR from 'swr'
 
-interface Transaction {
+export interface Transaction {
   id: string
   type: 'income' | 'expense'
   amount: number

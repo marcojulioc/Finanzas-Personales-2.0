@@ -16,7 +16,8 @@ interface Category {
 export function useCategories() {
   const { data, error, isLoading, mutate } = useSWR<Category[]>('/api/categories')
 
-  const categories = data ?? []
+  // Memoize categories to ensure stable reference
+  const categories = useMemo(() => data ?? [], [data])
 
   const expenseCategories = useMemo(
     () => categories.filter((c) => c.type === 'expense'),
