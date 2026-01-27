@@ -11,20 +11,6 @@ export async function GET() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Debug logging
-    console.log('=== CARDS API GET ===')
-    console.log('User ID:', session.user.id)
-
-    // First get all cards for debugging
-    const allUserCards = await db.creditCard.findMany({
-      where: { userId: session.user.id },
-      include: { balances: true },
-    })
-    console.log('All user cards:', allUserCards.length)
-    for (const c of allUserCards) {
-      console.log(`  Card: ${c.name} (${c.bankName}), isActive: ${c.isActive}, balances: ${c.balances.length}`)
-    }
-
     const cards = await db.creditCard.findMany({
       where: { userId: session.user.id, isActive: true },
       include: {
@@ -35,10 +21,7 @@ export async function GET() {
       orderBy: { createdAt: 'asc' },
     })
 
-    console.log('Active cards with balances:', cards.length)
-    console.log('=== END CARDS API ===')
-
-    return NextResponse.json(cards)
+    return NextResponse.json({ data: cards })
   } catch (error) {
     console.error('Error fetching cards:', error)
     return NextResponse.json(
