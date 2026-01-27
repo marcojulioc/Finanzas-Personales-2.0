@@ -41,12 +41,29 @@ export async function GET() {
       }
     }
 
+    // Get all cards with user info for debugging
+    const allCards = await db.creditCard.findMany({
+      include: {
+        balances: true,
+        user: { select: { id: true, email: true } },
+      },
+    })
+
     return NextResponse.json({
       global: {
         totalCards,
         activeCards,
         totalBalances,
       },
+      allCardsDetail: allCards.map((c) => ({
+        id: c.id,
+        name: c.name,
+        bankName: c.bankName,
+        isActive: c.isActive,
+        userId: c.userId,
+        userEmail: c.user.email,
+        balancesCount: c.balances.length,
+      })),
       user: userInfo,
       session: session
         ? { id: session.user?.id, email: session.user?.email }
