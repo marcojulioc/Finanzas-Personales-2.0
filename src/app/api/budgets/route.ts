@@ -77,14 +77,15 @@ export async function GET(request: NextRequest) {
 
     if (monthParam) {
       // Parsear fecha del parámetro (esperado: YYYY-MM-DD)
+      // Usar métodos UTC para evitar problemas de timezone
       const parsedDate = new Date(monthParam)
-      currentMonthStart = new Date(Date.UTC(parsedDate.getFullYear(), parsedDate.getMonth(), 1))
-      nextMonthStart = new Date(Date.UTC(parsedDate.getFullYear(), parsedDate.getMonth() + 1, 1))
+      currentMonthStart = new Date(Date.UTC(parsedDate.getUTCFullYear(), parsedDate.getUTCMonth(), 1))
+      nextMonthStart = new Date(Date.UTC(parsedDate.getUTCFullYear(), parsedDate.getUTCMonth() + 1, 1))
     } else {
-      // Usar mes actual
-      const now = new Date(Date.now())
-      currentMonthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1))
-      nextMonthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1))
+      // Usar mes actual - también en UTC
+      const now = new Date()
+      currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+      nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
     }
 
     // Obtener presupuestos con información de categoría
