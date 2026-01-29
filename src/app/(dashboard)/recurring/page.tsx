@@ -191,25 +191,25 @@ export default function RecurringPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-display font-bold">Recurrentes</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-display font-bold">Recurrentes</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             Transacciones que se repiten automáticamente
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleGenerate} disabled={isGenerating}>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" className="sm:size-default" onClick={handleGenerate} disabled={isGenerating}>
             {isGenerating ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" />
             ) : (
-              <RefreshCw className="w-4 h-4 mr-2" />
+              <RefreshCw className="w-4 h-4 sm:mr-2" />
             )}
-            Generar pendientes
+            <span className="hidden sm:inline">Generar pendientes</span>
           </Button>
-          <Button onClick={openCreateDialog}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Recurrente
+          <Button size="sm" className="sm:size-default" onClick={openCreateDialog}>
+            <Plus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Nueva Recurrente</span>
           </Button>
         </div>
       </div>
@@ -241,33 +241,35 @@ export default function RecurringPage() {
                 className={!recurring.isActive ? 'opacity-60' : ''}
               >
                 <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
+                        className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0"
                         style={{
                           backgroundColor: `${category?.color || '#6b7280'}20`,
                         }}
                       >
                         {category?.icon || '❓'}
                       </div>
-                      <div>
-                        <CardTitle className="text-base">
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-base truncate">
                           {category?.name || recurring.category}
                         </CardTitle>
-                        <CardDescription>
+                        <CardDescription className="truncate">
                           {recurring.description || FREQUENCY_LABELS[recurring.frequency]}
                         </CardDescription>
                       </div>
                     </div>
-                    {getStatusBadge(recurring)}
+                    <div className="shrink-0">
+                      {getStatusBadge(recurring)}
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Monto</span>
+                <CardContent className="space-y-3 overflow-hidden">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-muted-foreground shrink-0">Monto</span>
                     <span
-                      className={`font-mono font-bold ${
+                      className={`font-mono font-bold text-sm truncate ${
                         recurring.type === 'income'
                           ? 'text-success'
                           : 'text-danger'
@@ -278,32 +280,32 @@ export default function RecurringPage() {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-muted-foreground shrink-0">
                       Frecuencia
                     </span>
-                    <span className="text-sm">
+                    <span className="text-sm truncate">
                       {FREQUENCY_LABELS[recurring.frequency]}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Próxima fecha
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-muted-foreground shrink-0">
+                      Próxima
                     </span>
-                    <span className="text-sm">
+                    <span className="text-sm truncate">
                       {formatDate(recurring.nextDueDate)}
                     </span>
                   </div>
 
                   {(recurring.bankAccount || recurring.creditCard) && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-muted-foreground shrink-0">
                         Fuente
                       </span>
                       <Badge
                         variant="outline"
-                        className="font-normal"
+                        className="font-normal max-w-[120px] truncate"
                         style={{
                           borderColor:
                             recurring.bankAccount?.color ||
