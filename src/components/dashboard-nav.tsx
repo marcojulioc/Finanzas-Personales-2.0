@@ -139,17 +139,17 @@ export function DashboardNav({ user }: DashboardNavProps) {
       </div>
 
       {/* Mobile nav */}
-      <div className="md:hidden relative border-t">
+      <div className="md:hidden relative border-t safe-bottom">
         {/* Gradient fade indicator on the right */}
         <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-card to-transparent pointer-events-none z-10" />
-        <nav className="flex items-center gap-1 py-2 px-2 overflow-x-auto scrollbar-hide">
+        <nav className="flex items-center gap-1 py-2 px-2 overflow-x-auto scrollbar-hide scroll-smooth-touch">
           {navItems.map((item) => {
             const isActive = pathname === item.href
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-colors min-w-[4.5rem] ${
+                className={`flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-colors min-w-[4.5rem] touch-target touch-feedback ${
                   isActive
                     ? 'text-primary'
                     : 'text-muted-foreground'
