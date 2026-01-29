@@ -151,7 +151,7 @@ export function SwipeableTransactionItem({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <span
             className={cn(
               'font-mono font-bold text-sm sm:text-base',
@@ -167,12 +167,15 @@ export function SwipeableTransactionItem({
             )}
           </span>
           <button
+            onPointerDown={(e) => {
+              e.stopPropagation()
+            }}
             onClick={(e) => {
               e.stopPropagation()
               triggerHaptic('light')
               onEdit()
             }}
-            className="p-2 hover:bg-muted rounded-lg transition-colors hidden sm:block"
+            className="p-1.5 sm:p-2 hover:bg-muted rounded-lg transition-colors"
           >
             <Pencil className="w-4 h-4" />
           </button>
