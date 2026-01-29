@@ -110,7 +110,7 @@ export function SwipeableTransactionItem({
           damping: 30,
         }}
         className={cn(
-          'flex items-center justify-between p-4',
+          'flex items-center justify-between p-4 pr-24',
           'bg-background',
           'hover:bg-muted/50 transition-colors',
           'touch-pan-y',
