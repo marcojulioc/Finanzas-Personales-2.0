@@ -38,13 +38,13 @@ interface DashboardNavProps {
 }
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/accounts', label: 'Cuentas', icon: Landmark },
-  { href: '/cards', label: 'Tarjetas', icon: CreditCard },
-  { href: '/transactions', label: 'Transacciones', icon: Receipt },
-  { href: '/recurring', label: 'Recurrentes', icon: Repeat },
-  { href: '/budgets', label: 'Presupuestos', icon: PiggyBank },
-  { href: '/reports', label: 'Reportes', icon: BarChart3 },
+  { href: '/dashboard', label: 'Dashboard', shortLabel: 'Inicio', icon: LayoutDashboard },
+  { href: '/accounts', label: 'Cuentas', shortLabel: 'Cuentas', icon: Landmark },
+  { href: '/cards', label: 'Tarjetas', shortLabel: 'Tarjetas', icon: CreditCard },
+  { href: '/transactions', label: 'Transacciones', shortLabel: 'Movim.', icon: Receipt },
+  { href: '/recurring', label: 'Recurrentes', shortLabel: 'Recurr.', icon: Repeat },
+  { href: '/budgets', label: 'Presupuestos', shortLabel: 'Presup.', icon: PiggyBank },
+  { href: '/reports', label: 'Reportes', shortLabel: 'Reportes', icon: BarChart3 },
 ]
 
 export function DashboardNav({ user }: DashboardNavProps) {
@@ -142,21 +142,21 @@ export function DashboardNav({ user }: DashboardNavProps) {
       <div className="md:hidden relative border-t safe-bottom">
         {/* Gradient fade indicator on the right */}
         <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-card to-transparent pointer-events-none z-10" />
-        <nav className="flex items-center gap-1 py-2 px-2 overflow-x-auto scrollbar-hide scroll-smooth-touch">
+        <nav className="flex items-center py-2 px-1 overflow-x-auto scrollbar-hide scroll-smooth-touch">
           {navItems.map((item) => {
             const isActive = pathname === item.href
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-1 p-2 rounded-md text-xs font-medium transition-colors min-w-[4.5rem] touch-target touch-feedback ${
+                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-md text-[10px] font-medium transition-colors shrink-0 touch-feedback ${
                   isActive
                     ? 'text-primary'
                     : 'text-muted-foreground'
                 }`}
               >
                 <item.icon className="w-5 h-5" />
-                {item.label}
+                {item.shortLabel}
               </Link>
             )
           })}
