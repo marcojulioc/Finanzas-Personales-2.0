@@ -5,7 +5,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/lib/currencies';
+import { formatCurrencyAmount } from '@/lib/currencies';
 
 interface Transaction {
   id: string;
@@ -61,6 +61,7 @@ export function VirtualTransactionList({
       >
         {virtualizer.getVirtualItems().map((virtualItem) => {
           const transaction = transactions[virtualItem.index];
+          if (!transaction) return null;
           const isExpense = transaction.type === 'EXPENSE';
 
           return (
@@ -93,7 +94,7 @@ export function VirtualTransactionList({
                 isExpense ? 'text-destructive' : 'text-green-600'
               )}>
                 {isExpense ? '-' : '+'}
-                {formatCurrency(transaction.amount, transaction.currency)}
+                {formatCurrencyAmount(transaction.amount, transaction.currency)}
               </div>
             </div>
           );

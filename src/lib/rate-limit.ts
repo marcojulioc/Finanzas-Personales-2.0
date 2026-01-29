@@ -74,7 +74,8 @@ export function getClientIP(request: Request): string {
   const realIP = request.headers.get('x-real-ip');
 
   if (forwarded) {
-    return forwarded.split(',')[0].trim();
+    const ip = forwarded.split(',')[0];
+    return ip ? ip.trim() : 'anonymous';
   }
   if (realIP) {
     return realIP;
