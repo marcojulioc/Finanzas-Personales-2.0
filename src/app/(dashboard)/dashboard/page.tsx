@@ -263,7 +263,7 @@ export default async function DashboardPage() {
               <Wallet className="h-5 w-5 text-purple-500" />
               <CardTitle>Mis Presupuestos</CardTitle>
             </div>
-            <Link href="/dashboard/budgets">
+            <Link href="/budgets">
               <Button variant="ghost" size="sm">
                 Ver todos
                 <ArrowRight className="w-4 h-4 ml-1" />
@@ -277,7 +277,7 @@ export default async function DashboardPage() {
             <div className="text-center py-4">
               <Wallet className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground">No hay presupuestos definidos para este mes.</p>
-              <Link href="/dashboard/budgets">
+              <Link href="/budgets">
                 <Button variant="outline" size="sm" className="mt-2">
                   <Plus className="w-4 h-4 mr-2" />
                   Crear primer presupuesto
