@@ -1,3 +1,5 @@
-import { handlers } from '@/lib/auth'
+import { handlers } from '@/lib/auth';
+import { withRateLimit } from './rate-limit';
 
-export const { GET, POST } = handlers
+export const GET = handlers.GET;
+export const POST = withRateLimit(handlers.POST);
