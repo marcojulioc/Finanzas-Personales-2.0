@@ -1,66 +1,35 @@
-import { Card, CardContent } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonList } from '@/components/ui/skeleton-list';
+import { SkeletonCard } from '@/components/ui/skeleton-card';
 
 export default function TransactionsLoading() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-9 w-48" />
-          <Skeleton className="h-5 w-52" />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
         </div>
-        <Skeleton className="h-10 w-44" />
+        <Skeleton className="h-10 w-full sm:w-40" />
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="py-4">
-          <div className="flex flex-wrap gap-4 items-center">
-            <Skeleton className="h-5 w-20" />
-            <Skeleton className="h-10 w-[150px]" />
-            <Skeleton className="h-10 w-[180px]" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap gap-2">
+        <Skeleton className="h-10 w-full sm:w-32" />
+        <Skeleton className="h-10 w-full sm:w-32" />
+        <Skeleton className="h-10 w-full sm:w-40" />
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <SkeletonCard key={i} showHeader={false} lines={2} />
+        ))}
+      </div>
 
       {/* Transaction list */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="divide-y">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between p-4"
-              >
-                <div className="flex items-center gap-4">
-                  <Skeleton className="w-10 h-10 rounded-lg" />
-                  <div className="space-y-1">
-                    <Skeleton className="h-4 w-28" />
-                    <Skeleton className="h-3 w-40" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Skeleton className="h-5 w-24" />
-                  <div className="flex gap-1">
-                    <Skeleton className="w-8 h-8 rounded" />
-                    <Skeleton className="w-8 h-8 rounded" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-4 w-40" />
-        <div className="flex gap-2">
-          <Skeleton className="h-8 w-8 rounded" />
-          <Skeleton className="h-8 w-8 rounded" />
-        </div>
-      </div>
+      <SkeletonList count={8} />
     </div>
-  )
+  );
 }
