@@ -3,8 +3,31 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { registerSchema } from '@/lib/validations'
 import { seedUserCategories } from '@/lib/categories'
+import { checkRateLimit, getClientIP } from '@/lib/rate-limit'
 
 export async function POST(request: Request) {
+  // Rate limiting: 5 attempts per minute
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(clientIP, 5, 60000);
+
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      {
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Demasiados intentos. Por favor espera un momento.',
+        }
+      },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': rateLimit.resetIn.toString(),
+          'X-RateLimit-Remaining': '0',
+        }
+      }
+    );
+  }
+
   try {
     const body = await request.json()
     const validated = registerSchema.safeParse(body)
