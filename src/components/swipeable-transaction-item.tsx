@@ -40,7 +40,7 @@ export function SwipeableTransactionItem({
   const { triggerHaptic } = useHapticFeedback()
   const [isDeleting, setIsDeleting] = React.useState(false)
   const x = useMotionValue(0)
-  
+
   // Transformar el desplazamiento en opacidad para el fondo rojo
   const deleteBackgroundOpacity = useTransform(x, [-200, -80, 0], [1, 0.7, 0])
   const deleteIconScale = useTransform(x, [-200, -80, 0], [1.2, 1, 0.8])
@@ -50,7 +50,7 @@ export function SwipeableTransactionItem({
     if (info.offset.x < -100) {
       triggerHaptic('warning')
       setIsDeleting(true)
-      
+
       // Animar hacia la izquierda completamente antes de eliminar
       setTimeout(() => {
         triggerHaptic('error')
@@ -69,8 +69,18 @@ export function SwipeableTransactionItem({
     }
   }
 
+  const handleEdit = () => {
+    triggerHaptic('light')
+    onEdit()
+  }
+
+  const handleDelete = () => {
+    triggerHaptic('warning')
+    onDelete()
+  }
+
   return (
-    <div className="relative overflow-hidden">
+    <div className={cn('relative overflow-hidden', className)}>
       {/* Background de eliminación (visible al hacer swipe left) */}
       <motion.div
         className="absolute inset-0 bg-danger flex items-center justify-end px-6"
@@ -81,7 +91,7 @@ export function SwipeableTransactionItem({
         </motion.div>
       </motion.div>
 
-      {/* Item de transacción */}
+      {/* Item de transacción - área draggable */}
       <motion.div
         drag="x"
         dragConstraints={{ left: -200, right: 0 }}
@@ -103,10 +113,10 @@ export function SwipeableTransactionItem({
           'flex items-center justify-between p-4',
           'bg-background',
           'hover:bg-muted/50 transition-colors',
-          'touch-pan-y', // Permitir scroll vertical mientras se hace drag horizontal
-          className
+          'touch-pan-y',
         )}
       >
+        {/* Contenido de la transacción */}
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0"
@@ -142,8 +152,8 @@ export function SwipeableTransactionItem({
               )}
               {transaction.description && (
                 <>
-                  <span>•</span>
-                  <span className="truncate max-w-[120px]">
+                  <span className="hidden sm:inline">•</span>
+                  <span className="hidden sm:inline truncate max-w-[120px]">
                     {transaction.description}
                   </span>
                 </>
@@ -151,36 +161,43 @@ export function SwipeableTransactionItem({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          <span
-            className={cn(
-              'font-mono font-bold text-sm sm:text-base',
-              transaction.type === 'income'
-                ? 'text-success'
-                : 'text-danger'
-            )}
-          >
-            {transaction.type === 'income' ? '+' : '-'}
-            {formatCurrency(
-              Number(transaction.amount),
-              transaction.currency
-            )}
-          </span>
-          <button
-            onPointerDown={(e) => {
-              e.stopPropagation()
-            }}
-            onClick={(e) => {
-              e.stopPropagation()
-              triggerHaptic('light')
-              onEdit()
-            }}
-            className="p-1.5 sm:p-2 hover:bg-muted rounded-lg transition-colors"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
-        </div>
+
+        {/* Monto */}
+        <span
+          className={cn(
+            'font-mono font-bold text-sm sm:text-base shrink-0',
+            transaction.type === 'income'
+              ? 'text-success'
+              : 'text-danger'
+          )}
+        >
+          {transaction.type === 'income' ? '+' : '-'}
+          {formatCurrency(
+            Number(transaction.amount),
+            transaction.currency
+          )}
+        </span>
       </motion.div>
+
+      {/* Botones de acción - FUERA del área draggable */}
+      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+        <button
+          type="button"
+          onClick={handleEdit}
+          className="p-2 hover:bg-muted rounded-lg transition-colors bg-background/80 backdrop-blur-sm"
+          aria-label="Editar transacción"
+        >
+          <Pencil className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={handleDelete}
+          className="p-2 hover:bg-danger/20 rounded-lg transition-colors bg-background/80 backdrop-blur-sm text-danger"
+          aria-label="Eliminar transacción"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   )
 }
