@@ -28,6 +28,7 @@ import {
 import { ResponsiveDialog } from '@/components/responsive-dialog'
 import { SwipeableTransactionItem } from '@/components/swipeable-transaction-item'
 import { FloatingActionButton } from '@/components/floating-action-button'
+import { PullToRefresh } from '@/components/pull-to-refresh'
 import { motion } from 'framer-motion'
 import {
   Select,
@@ -262,6 +263,10 @@ export default function TransactionsPage() {
   // Use filtered categories from hook based on transaction type
   const categories = watchType === 'expense' ? expenseCategories : incomeCategories
 
+  const handleRefresh = async () => {
+    await mutate()
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-8">
@@ -274,9 +279,10 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* FAB para mobile */}
-      <FloatingActionButton onClick={openCreateDialog} />
+    <PullToRefresh onRefresh={handleRefresh} className="min-h-[calc(100vh-12rem)]">
+      <div className="space-y-6">
+        {/* FAB para mobile */}
+        <FloatingActionButton onClick={openCreateDialog} />
 
       <div className="flex items-center justify-between">
         <div>
@@ -677,6 +683,7 @@ export default function TransactionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </PullToRefresh>
   )
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
@@ -15,8 +16,10 @@ import {
   Moon,
   Sun,
   Tags,
+  Search,
 } from 'lucide-react'
 import { NotificationBell } from '@/components/notification-bell'
+import { GlobalSearch } from '@/components/global-search'
 import { useTheme } from 'next-themes'
 
 import { Button } from '@/components/ui/button'
@@ -50,6 +53,7 @@ const navItems = [
 export function DashboardNav({ user }: DashboardNavProps) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const initials = user.name
     ?.split(' ')
@@ -88,6 +92,15 @@ export function DashboardNav({ user }: DashboardNavProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSearchOpen(true)}
+          >
+            <Search className="h-5 w-5" />
+            <span className="sr-only">Buscar</span>
+          </Button>
+
           <Button
             variant="ghost"
             size="icon"
@@ -138,30 +151,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
         </div>
       </div>
 
-      {/* Mobile nav */}
-      <div className="md:hidden relative border-t safe-bottom">
-        {/* Gradient fade indicator on the right */}
-        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-card to-transparent pointer-events-none z-10" />
-        <nav className="flex items-center py-2 px-1 overflow-x-auto scrollbar-hide scroll-smooth-touch">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-md text-[10px] font-medium transition-colors shrink-0 touch-feedback ${
-                  isActive
-                    ? 'text-primary'
-                    : 'text-muted-foreground'
-                }`}
-              >
-                <item.icon className="w-5 h-5" />
-                {item.shortLabel}
-              </Link>
-            )
-          })}
-        </nav>
-      </div>
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </header>
   )
 }
