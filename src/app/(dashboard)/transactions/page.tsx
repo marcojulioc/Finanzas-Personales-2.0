@@ -59,6 +59,7 @@ import { useTransactions } from '@/hooks/use-transactions'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useCards } from '@/hooks/use-cards'
 import { useCategories } from '@/hooks/use-categories'
+import { TransactionPageSkeleton } from '@/components/skeletons'
 
 interface Transaction {
   id: string
@@ -292,14 +293,7 @@ export default function TransactionsPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-display font-bold">Transacciones</h1>
-          <p className="text-muted-foreground">Cargando...</p>
-        </div>
-      </div>
-    )
+    return <TransactionPageSkeleton />
   }
 
   return (

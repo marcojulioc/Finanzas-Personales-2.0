@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/format-utils'
 import { Progress } from '@/components/ui/progress'
 import { useBudgets, usePreviousMonthBudgets, type Budget } from '@/hooks/use-budgets'
+import { BudgetPageSkeleton } from '@/components/skeletons'
 
 // Helper to get first day of a month in UTC
 function getMonthStart(date: Date): Date {
@@ -166,11 +167,7 @@ export default function BudgetsPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-40">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+    return <BudgetPageSkeleton />
   }
 
   if (isError) {

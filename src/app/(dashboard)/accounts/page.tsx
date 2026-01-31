@@ -47,6 +47,7 @@ import { COMMON_BANKS, ACCOUNT_COLORS } from '@/lib/onboarding-store'
 import { formatCurrency } from '@/lib/format-utils'
 import { useUserCurrencies } from '@/hooks/use-user-currencies'
 import { useAccounts, type BankAccount } from '@/hooks/use-accounts'
+import { AccountSkeletonGrid } from '@/components/skeletons'
 
 const accountSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
@@ -177,10 +178,13 @@ export default function AccountsPage() {
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-display font-bold">Mis Cuentas</h1>
-          <p className="text-muted-foreground">Cargando...</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-display font-bold">Mis Cuentas</h1>
+            <p className="text-muted-foreground">Gestiona tus cuentas bancarias</p>
+          </div>
         </div>
+        <AccountSkeletonGrid count={3} />
       </div>
     )
   }

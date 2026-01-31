@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { COMMON_BANKS, ACCOUNT_COLORS } from '@/lib/onboarding-store'
 import { formatCurrency } from '@/lib/format-utils'
+import { CreditCardSkeletonGrid } from '@/components/skeletons'
 
 const balanceSchema = z.object({
   currency: z.string().min(1, 'Selecciona una moneda'),
@@ -200,10 +201,13 @@ export default function CardsPage() {
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-display font-bold">Mis Tarjetas</h1>
-          <p className="text-muted-foreground">Cargando...</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-display font-bold">Mis Tarjetas</h1>
+            <p className="text-muted-foreground">Gestiona tus tarjetas de credito</p>
+          </div>
         </div>
+        <CreditCardSkeletonGrid count={2} />
       </div>
     )
   }
