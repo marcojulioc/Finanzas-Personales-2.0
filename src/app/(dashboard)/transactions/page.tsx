@@ -230,7 +230,7 @@ export default function TransactionsPage() {
         currency: data.currency,
         category: data.category,
         description: data.description || undefined,
-        date: new Date(data.date),
+        date: new Date(data.date + 'T12:00:00'),
         bankAccountId: data.sourceType === 'account' ? data.bankAccountId : undefined,
         creditCardId: data.sourceType === 'card' ? data.creditCardId : undefined,
         isCardPayment: data.isCardPayment,

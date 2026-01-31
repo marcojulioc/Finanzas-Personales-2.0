@@ -112,8 +112,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate initial nextDueDate (same as startDate for first occurrence)
-    const startDate = new Date(data.startDate)
-    startDate.setHours(0, 0, 0, 0)
+    const startDate = new Date(data.startDate + 'T12:00:00')
 
     const recurringTransaction = await db.recurringTransaction.create({
       data: {
@@ -129,7 +128,7 @@ export async function POST(request: NextRequest) {
         targetCardId: data.targetCardId,
         frequency: data.frequency,
         startDate: startDate,
-        endDate: data.endDate ? new Date(data.endDate) : null,
+        endDate: data.endDate ? new Date(data.endDate + 'T12:00:00') : null,
         nextDueDate: startDate,
         isActive: true,
       },

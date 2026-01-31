@@ -126,8 +126,7 @@ export async function PUT(
       }
     }
 
-    const startDate = new Date(data.startDate)
-    startDate.setHours(0, 0, 0, 0)
+    const startDate = new Date(data.startDate + 'T12:00:00')
 
     const recurringTransaction = await db.recurringTransaction.update({
       where: { id },
@@ -143,7 +142,7 @@ export async function PUT(
         targetCardId: data.targetCardId,
         frequency: data.frequency,
         startDate: startDate,
-        endDate: data.endDate ? new Date(data.endDate) : null,
+        endDate: data.endDate ? new Date(data.endDate + 'T12:00:00') : null,
       },
       include: {
         bankAccount: { select: { id: true, name: true, color: true } },
