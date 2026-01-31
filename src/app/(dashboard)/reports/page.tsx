@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Loader2, TrendingUp, TrendingDown, Wallet, Calendar, ArrowUpRight, ArrowDownRight } from 'lucide-react'
-import { formatCurrency } from '@/lib/format-utils'
+import { formatCurrency, parseLocalDate } from '@/lib/format-utils'
 import { getCategoryById } from '@/lib/categories'
 import { useReports } from '@/hooks/use-reports'
 
@@ -366,7 +366,7 @@ function BalanceAreaChart({
   // Format data for chart
   const chartData = data.map((item) => ({
     ...item,
-    dateLabel: new Date(item.date).toLocaleDateString('es-ES', {
+    dateLabel: parseLocalDate(item.date).toLocaleDateString('es-ES', {
       day: 'numeric',
       month: 'short',
     }),
@@ -520,11 +520,11 @@ function SpendingCalendarHeatmap({
               return (
                 <>
                   <span>
-                    {new Date(firstDay.date).toLocaleDateString('es-ES', { month: 'short' })}
+                    {parseLocalDate(firstDay.date).toLocaleDateString('es-ES', { month: 'short' })}
                   </span>
                   {weeks.length > 6 && midDay && (
                     <span>
-                      {new Date(midDay.date).toLocaleDateString('es-ES', { month: 'short' })}
+                      {parseLocalDate(midDay.date).toLocaleDateString('es-ES', { month: 'short' })}
                     </span>
                   )}
                 </>

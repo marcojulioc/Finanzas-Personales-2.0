@@ -53,7 +53,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import type { Category } from '@/lib/categories'
-import { formatCurrency, formatDate } from '@/lib/format-utils'
+import { formatCurrency, formatDate, parseLocalDate } from '@/lib/format-utils'
 import { useUserCurrencies } from '@/hooks/use-user-currencies'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useAccounts } from '@/hooks/use-accounts'
@@ -212,7 +212,7 @@ export default function TransactionsPage() {
       currency: transaction.currency,
       category: transaction.category,
       description: transaction.description || '',
-      date: new Date(transaction.date).toISOString().split('T')[0],
+      date: parseLocalDate(transaction.date).toISOString().split('T')[0],
       sourceType,
       bankAccountId: transaction.bankAccountId || '',
       creditCardId: transaction.creditCardId || '',

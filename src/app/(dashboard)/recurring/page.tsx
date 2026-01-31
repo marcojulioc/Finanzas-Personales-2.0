@@ -42,7 +42,7 @@ import { Badge } from '@/components/ui/badge'
 import { getCategoryById } from '@/lib/categories'
 import { RecurringForm } from '@/components/recurring-form'
 import { FREQUENCY_LABELS } from '@/lib/recurring-constants'
-import { formatCurrency, formatDate } from '@/lib/format-utils'
+import { formatCurrency, formatDate, parseLocalDate } from '@/lib/format-utils'
 import { useRecurring, RecurringTransaction } from '@/hooks/use-recurring'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useCards } from '@/hooks/use-cards'
@@ -162,7 +162,7 @@ export default function RecurringPage() {
       )
     }
 
-    const endDate = recurring.endDate ? new Date(recurring.endDate) : null
+    const endDate = recurring.endDate ? parseLocalDate(recurring.endDate) : null
     if (endDate && endDate < new Date()) {
       return (
         <Badge variant="secondary" className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">

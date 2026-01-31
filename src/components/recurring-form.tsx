@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select'
 import type { Category } from '@/lib/categories'
 import { useUserCurrencies } from '@/hooks/use-user-currencies'
+import { parseLocalDate } from '@/lib/format-utils'
 
 interface BankAccount {
   id: string
@@ -127,10 +128,10 @@ export function RecurringForm({
       description: initialData?.description || '',
       frequency: initialData?.frequency || 'monthly',
       startDate: initialData
-        ? new Date(initialData.startDate).toISOString().split('T')[0]
+        ? parseLocalDate(initialData.startDate).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0],
       endDate: initialData?.endDate
-        ? new Date(initialData.endDate).toISOString().split('T')[0]
+        ? parseLocalDate(initialData.endDate).toISOString().split('T')[0]
         : '',
       sourceType: getInitialSourceType(),
       bankAccountId: initialData?.bankAccountId || accounts[0]?.id || '',

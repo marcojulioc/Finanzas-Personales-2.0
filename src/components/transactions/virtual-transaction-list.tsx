@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { formatCurrencyAmount } from '@/lib/currencies';
+import { parseLocalDate } from '@/lib/format-utils';
 
 interface Transaction {
   id: string;
@@ -86,7 +87,7 @@ export function VirtualTransactionList({
               <div className="flex-1 min-w-0 mr-4">
                 <p className="font-medium truncate">{transaction.description}</p>
                 <p className="text-sm text-muted-foreground">
-                  {format(new Date(transaction.date), 'dd MMM yyyy', { locale: es })}
+                  {format(parseLocalDate(transaction.date), 'dd MMM yyyy', { locale: es })}
                 </p>
               </div>
               <div className={cn(

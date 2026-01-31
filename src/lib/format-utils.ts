@@ -19,8 +19,21 @@ export function formatCurrency(amount: number, currency: string = 'MXN'): string
   return formattersCache.get(key)!.format(amount)
 }
 
+/**
+ * Parse a date string avoiding timezone issues.
+ * When dates come from PostgreSQL as "2025-01-30T00:00:00.000Z" (midnight UTC),
+ * users in negative UTC timezones (like America) would see the previous day.
+ * This function forces midday to avoid the boundary issue.
+ */
+export function parseLocalDate(dateString: string | Date): Date {
+  const str = typeof dateString === 'string' ? dateString : dateString.toISOString()
+  // Extract just the date part (YYYY-MM-DD) and force midday
+  const datePart = str.slice(0, 10)
+  return new Date(datePart + 'T12:00:00')
+}
+
 export function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('es-MX', {
+  return parseLocalDate(dateString).toLocaleDateString('es-MX', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
