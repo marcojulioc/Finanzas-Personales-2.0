@@ -1,7 +1,6 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { formatCurrency } from '@/lib/format-utils'
 import { TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 
@@ -43,21 +42,21 @@ export function BudgetSummaryCard({
   }
 
   return (
-    <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 shadow-xl">
+    <Card className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-card to-primary/10 shadow-lg">
       {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-teal-500/5 via-transparent to-emerald-500/5" />
+      <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5" />
 
       {/* Decorative elements */}
-      <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-teal-500/10 blur-2xl" />
-      <div className="absolute -left-4 -bottom-4 h-24 w-24 rounded-full bg-emerald-500/10 blur-xl" />
+      <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
+      <div className="absolute -left-4 -bottom-4 h-24 w-24 rounded-full bg-primary/10 blur-xl" />
 
       <CardContent className="relative p-6">
         {/* Header */}
         <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500/20">
-            <Wallet className="h-4 w-4 text-teal-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
+            <Wallet className="h-4 w-4 text-primary" />
           </div>
-          <h3 className="text-sm font-medium tracking-wide text-slate-400 uppercase">
+          <h3 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
             Resumen del Mes
           </h3>
         </div>
@@ -66,10 +65,10 @@ export function BudgetSummaryCard({
         <div className="grid grid-cols-3 gap-4 mb-6">
           {/* Total Budgeted */}
           <div className="space-y-1">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Presupuestado
             </p>
-            <p className="text-xl font-bold text-slate-100 tabular-nums">
+            <p className="text-xl font-bold text-foreground tabular-nums">
               {formatCurrency(totalBudgeted, currency)}
             </p>
           </div>
@@ -77,12 +76,12 @@ export function BudgetSummaryCard({
           {/* Total Spent */}
           <div className="space-y-1">
             <div className="flex items-center gap-1">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Gastado
               </p>
-              <TrendingDown className="h-3 w-3 text-slate-500" />
+              <TrendingDown className="h-3 w-3 text-muted-foreground" />
             </div>
-            <p className={`text-xl font-bold tabular-nums ${isOverBudget ? 'text-red-400' : 'text-slate-100'}`}>
+            <p className={`text-xl font-bold tabular-nums ${isOverBudget ? 'text-red-500' : 'text-foreground'}`}>
               {formatCurrency(totalSpent, currency)}
             </p>
           </div>
@@ -90,10 +89,10 @@ export function BudgetSummaryCard({
           {/* Available */}
           <div className="space-y-1">
             <div className="flex items-center gap-1">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 {isOverBudget ? 'Excedido' : 'Disponible'}
               </p>
-              {!isOverBudget && <TrendingUp className="h-3 w-3 text-slate-500" />}
+              {!isOverBudget && <TrendingUp className="h-3 w-3 text-muted-foreground" />}
             </div>
             <p className={`text-xl font-bold tabular-nums ${getStatusColor()}`}>
               {isOverBudget ? '-' : ''}{formatCurrency(Math.abs(available), currency)}
@@ -104,19 +103,19 @@ export function BudgetSummaryCard({
         {/* Progress section */}
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-500">Progreso de gasto</span>
+            <span className="text-muted-foreground">Progreso de gasto</span>
             <span className={`font-semibold ${getStatusColor()}`}>
               {progressPercentage.toFixed(0)}%
             </span>
           </div>
 
           {/* Custom progress bar */}
-          <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-700/50">
+          <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
             <div
               className={`h-full rounded-full transition-all duration-500 ease-out ${getProgressColor()}`}
               style={{ width: `${Math.min(progressPercentage, 100)}%` }}
             />
-            </div>
+          </div>
 
           {/* Status indicator */}
           {(isOverBudget || isWarning) && (
