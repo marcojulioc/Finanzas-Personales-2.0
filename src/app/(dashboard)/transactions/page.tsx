@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useSearchParams, useRouter } from 'next/navigation'
 import {
   Plus,
   Trash2,
@@ -11,6 +12,9 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
+  X,
+  Landmark,
+  CreditCard as CreditCardIcon,
 } from 'lucide-react'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -89,6 +93,13 @@ const transactionSchema = z.object({
 type TransactionFormData = z.infer<typeof transactionSchema>
 
 export default function TransactionsPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // URL filters
+  const urlBankAccountId = searchParams.get('bankAccountId')
+  const urlCreditCardId = searchParams.get('creditCardId')
+
   // Filters and pagination state
   const [page, setPage] = useState(1)
   const [filterType, setFilterType] = useState<string>('all')
@@ -105,9 +116,22 @@ export default function TransactionsPage() {
     page,
     type: filterType,
     category: filterCategory,
+    bankAccountId: urlBankAccountId || undefined,
+    creditCardId: urlCreditCardId || undefined,
   })
   const { accounts } = useAccounts()
   const { cards } = useCards()
+
+  // Get the active filter source name
+  const activeFilterSource = urlBankAccountId
+    ? accounts.find(a => a.id === urlBankAccountId)
+    : urlCreditCardId
+    ? cards.find(c => c.id === urlCreditCardId)
+    : null
+
+  const clearSourceFilter = () => {
+    router.push('/transactions')
+  }
   const { categories: userCategories, expenseCategories, incomeCategories } = useCategories()
 
   // User currencies
@@ -296,6 +320,29 @@ export default function TransactionsPage() {
           Nueva Transaccion
         </Button>
       </div>
+
+      {/* Filtro de cuenta/tarjeta activo */}
+      {activeFilterSource && (
+        <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
+          {urlBankAccountId ? (
+            <Landmark className="w-4 h-4 text-primary" />
+          ) : (
+            <CreditCardIcon className="w-4 h-4 text-primary" />
+          )}
+          <span className="text-sm font-medium">
+            Mostrando transacciones de: <strong>{activeFilterSource.name}</strong>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearSourceFilter}
+            className="ml-auto h-7 px-2"
+          >
+            <X className="w-4 h-4 mr-1" />
+            Quitar filtro
+          </Button>
+        </div>
+      )}
 
       {/* Filtros */}
       <Card>

@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plus, Trash2, Pencil, Landmark } from 'lucide-react'
+import { Plus, Trash2, Pencil, Landmark, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
 import { z } from 'zod'
 import { toast } from 'sonner'
 
@@ -279,6 +280,13 @@ export default function AccountsPage() {
                       {formatCurrency(Number(account.balance), account.currency)}
                     </p>
                   </div>
+                  <Link
+                    href={`/transactions?bankAccountId=${account.id}`}
+                    className="flex items-center justify-center gap-2 w-full pt-3 mt-2 border-t text-sm text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Ver transacciones
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
                 </div>
               </CardContent>
             </Card>
