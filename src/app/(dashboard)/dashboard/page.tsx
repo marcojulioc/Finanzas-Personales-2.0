@@ -112,7 +112,7 @@ export default async function DashboardPage() {
             Tu resumen financiero
           </p>
         </div>
-        <Link href="/transactions">
+        <Link href="/transactions?new=true">
           <Button size="sm">
             <Plus className="w-4 h-4 mr-2" />
             Nueva

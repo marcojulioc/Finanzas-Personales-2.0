@@ -100,14 +100,15 @@ export default function TransactionsPage() {
   // URL filters
   const urlBankAccountId = searchParams.get('bankAccountId')
   const urlCreditCardId = searchParams.get('creditCardId')
+  const shouldOpenNewForm = searchParams.get('new') === 'true'
 
   // Filters and pagination state
   const [page, setPage] = useState(1)
   const [filterType, setFilterType] = useState<string>('all')
   const [filterCategory, setFilterCategory] = useState<string>('all')
 
-  // Dialog states
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  // Dialog states - open automatically if ?new=true
+  const [isDialogOpen, setIsDialogOpen] = useState(shouldOpenNewForm)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null)
@@ -189,6 +190,14 @@ export default function TransactionsPage() {
     setIsDialogOpen(true)
   }
 
+  // Clean up URL when dialog closes (remove ?new=true)
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open)
+    if (!open && shouldOpenNewForm) {
+      router.replace('/transactions')
+    }
+  }
+
   const openEditDialog = (transaction: Transaction) => {
     setEditingTransaction(transaction)
     const sourceType = transaction.bankAccountId
@@ -254,7 +263,7 @@ export default function TransactionsPage() {
         toast.success('Transaccion registrada correctamente')
       }
 
-      setIsDialogOpen(false)
+      handleDialogClose(false)
       mutate()
     } catch (error) {
       console.error('Error saving transaction:', error)
@@ -452,7 +461,7 @@ export default function TransactionsPage() {
       {/* Dialog para crear/editar */}
       <ResponsiveDialog
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={handleDialogClose}
         title={editingTransaction ? 'Editar Transaccion' : 'Nueva Transaccion'}
         description={
           editingTransaction
@@ -686,7 +695,7 @@ export default function TransactionsPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsDialogOpen(false)}
+                onClick={() => handleDialogClose(false)}
               >
                 Cancelar
               </Button>
