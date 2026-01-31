@@ -212,6 +212,7 @@ export default function CategoriesPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <CategoryForm
+            key={editingCategory?.id || 'new'}
             initialData={
               editingCategory
                 ? {
