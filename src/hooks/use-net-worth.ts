@@ -3,6 +3,7 @@
 import useSWR from 'swr'
 
 export interface NetWorthData {
+  primaryCurrency: string
   current: {
     totalAssets: number
     totalLiabilities: number

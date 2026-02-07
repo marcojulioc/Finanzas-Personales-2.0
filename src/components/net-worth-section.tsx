@@ -27,8 +27,9 @@ export function NetWorthSection() {
 
   if (!data) return null
 
-  const { current, history } = data
+  const { primaryCurrency, current, history } = data
   const isPositive = current.netWorth >= 0
+  const fmt = (amount: number) => formatCurrency(amount, primaryCurrency)
 
   return (
     <div className="space-y-6">
@@ -36,7 +37,7 @@ export function NetWorthSection() {
       <Card>
         <CardHeader>
           <CardTitle>Patrimonio Neto</CardTitle>
-          <CardDescription>Resumen de activos y deudas en MXN</CardDescription>
+          <CardDescription>Resumen de activos y deudas en {primaryCurrency}</CardDescription>
         </CardHeader>
         <CardContent>
           {/* Big net worth number */}
@@ -46,7 +47,7 @@ export function NetWorthSection() {
                 isPositive ? 'text-teal-600 dark:text-teal-400' : 'text-destructive'
               }`}
             >
-              {formatCurrency(current.netWorth)}
+              {fmt(current.netWorth)}
             </p>
           </div>
 
@@ -58,7 +59,7 @@ export function NetWorthSection() {
                 <TrendingUp className="h-4 w-4 text-success" />
                 <span className="text-sm font-medium text-success">Activos</span>
                 <span className="ml-auto text-sm font-mono font-semibold text-success">
-                  {formatCurrency(current.totalAssets)}
+                  {fmt(current.totalAssets)}
                 </span>
               </div>
               <div className="space-y-2">
@@ -70,7 +71,7 @@ export function NetWorthSection() {
                     />
                     <span className="truncate text-muted-foreground">{acc.name}</span>
                     <span className="ml-auto font-mono text-xs">
-                      {formatCurrency(acc.balanceConverted)}
+                      {fmt(acc.balanceConverted)}
                     </span>
                   </div>
                 ))}
@@ -86,7 +87,7 @@ export function NetWorthSection() {
                 <TrendingDown className="h-4 w-4 text-destructive" />
                 <span className="text-sm font-medium text-destructive">Deudas</span>
                 <span className="ml-auto text-sm font-mono font-semibold text-destructive">
-                  {formatCurrency(current.totalLiabilities)}
+                  {fmt(current.totalLiabilities)}
                 </span>
               </div>
               <div className="space-y-2">
@@ -98,7 +99,7 @@ export function NetWorthSection() {
                     />
                     <span className="truncate text-muted-foreground">{card.name}</span>
                     <span className="ml-auto font-mono text-xs">
-                      {formatCurrency(card.totalDebt)}
+                      {fmt(card.totalDebt)}
                     </span>
                   </div>
                 ))}
@@ -119,7 +120,7 @@ export function NetWorthSection() {
             <CardDescription>Tendencia histórica de tu patrimonio neto</CardDescription>
           </CardHeader>
           <CardContent>
-            <NetWorthChart data={history} />
+            <NetWorthChart data={history} currency={primaryCurrency} />
           </CardContent>
         </Card>
       )}
@@ -129,8 +130,10 @@ export function NetWorthSection() {
 
 function NetWorthChart({
   data,
+  currency,
 }: {
   data: { date: string; totalAssets: number; totalLiabilities: number; netWorth: number }[]
+  currency: string
 }) {
   const chartData = data.map((item) => ({
     ...item,
@@ -178,7 +181,7 @@ function NetWorthChart({
             className="text-muted-foreground"
           />
           <Tooltip
-            formatter={(value) => formatCurrency(Number(value) || 0)}
+            formatter={(value) => formatCurrency(Number(value) || 0, currency)}
             labelFormatter={(label) => `Fecha: ${label}`}
             contentStyle={{
               backgroundColor: 'hsl(var(--card))',

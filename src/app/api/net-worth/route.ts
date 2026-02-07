@@ -2,6 +2,45 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 
+// Approximate USD exchange rates (USD → target currency)
+const USD_RATES: Record<string, number> = {
+  USD: 1,
+  MXN: 17,
+  DOP: 58,
+  CAD: 1.36,
+  EUR: 0.92,
+  GBP: 0.79,
+  CHF: 0.88,
+  COP: 4200,
+  BRL: 5.1,
+  ARS: 900,
+  CLP: 950,
+  PEN: 3.7,
+  UYU: 40,
+  PYG: 7500,
+  BOB: 6.9,
+  VES: 36,
+  CRC: 510,
+  GTQ: 7.8,
+  HNL: 25,
+  NIO: 37,
+  PAB: 1,
+  HTG: 132,
+  JMD: 156,
+  TTD: 6.8,
+  BBD: 2,
+  BSD: 1,
+  CUP: 24,
+}
+
+function convertToPrimary(amount: number, fromCurrency: string, primaryCurrency: string): number {
+  if (fromCurrency === primaryCurrency) return amount
+  const fromRate = USD_RATES[fromCurrency] ?? 1
+  const toRate = USD_RATES[primaryCurrency] ?? 1
+  // Convert: amount in fromCurrency → USD → primaryCurrency
+  return (amount / fromRate) * toRate
+}
+
 // GET /api/net-worth - Get current net worth + historical snapshots
 export async function GET() {
   try {
@@ -11,10 +50,13 @@ export async function GET() {
     }
 
     const userId = session.user.id
-    const exchangeRate = 17
 
-    // Fetch accounts and cards in parallel
-    const [bankAccounts, creditCards] = await Promise.all([
+    // Fetch user's primary currency, accounts and cards in parallel
+    const [user, bankAccounts, creditCards] = await Promise.all([
+      db.user.findUnique({
+        where: { id: userId },
+        select: { primaryCurrency: true },
+      }),
       db.bankAccount.findMany({
         where: { userId, isActive: true },
         orderBy: { createdAt: 'asc' },
@@ -26,11 +68,13 @@ export async function GET() {
       }),
     ])
 
+    const primaryCurrency = user?.primaryCurrency ?? 'USD'
+    const exchangeRate = USD_RATES[primaryCurrency] ?? 1
+
     // Compute live totals
     const accounts = bankAccounts.map((acc) => {
       const balance = Number(acc.balance)
-      const balanceConverted =
-        acc.currency === 'USD' ? balance * exchangeRate : balance
+      const balanceConverted = convertToPrimary(balance, acc.currency, primaryCurrency)
       return {
         id: acc.id,
         name: acc.name,
@@ -47,8 +91,7 @@ export async function GET() {
     const cards = creditCards.map((card) => {
       const balances = card.balances.map((b) => {
         const balance = Number(b.balance)
-        const balanceConverted =
-          b.currency === 'USD' ? balance * exchangeRate : balance
+        const balanceConverted = convertToPrimary(balance, b.currency, primaryCurrency)
         return {
           currency: b.currency,
           balance,
@@ -127,6 +170,7 @@ export async function GET() {
 
     return NextResponse.json({
       data: {
+        primaryCurrency,
         current: {
           totalAssets,
           totalLiabilities,
