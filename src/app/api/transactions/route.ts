@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
-    const type = searchParams.get('type') as 'income' | 'expense' | null
+    const type = searchParams.get('type') as 'income' | 'expense' | 'transfer' | null
     const category = searchParams.get('category')
     const bankAccountId = searchParams.get('bankAccountId')
     const creditCardId = searchParams.get('creditCardId')
@@ -71,6 +71,9 @@ export async function GET(request: NextRequest) {
             select: { id: true, name: true, color: true },
           },
           creditCard: {
+            select: { id: true, name: true, color: true },
+          },
+          targetAccount: {
             select: { id: true, name: true, color: true },
           },
         },
@@ -134,6 +137,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validar transferencias entre cuentas
+    if (data.type === 'transfer') {
+      if (!data.bankAccountId || !data.targetAccountId) {
+        return NextResponse.json(
+          { error: 'La transferencia requiere cuenta origen y cuenta destino' },
+          { status: 422 }
+        )
+      }
+      if (data.bankAccountId === data.targetAccountId) {
+        return NextResponse.json(
+          { error: 'La cuenta origen y destino deben ser diferentes' },
+          { status: 422 }
+        )
+      }
+    }
+
     // Verificar pertenencia de cuenta/tarjeta
     if (data.bankAccountId) {
       const account = await db.bankAccount.findFirst({
@@ -171,6 +190,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (data.targetAccountId) {
+      const targetAccount = await db.bankAccount.findFirst({
+        where: { id: data.targetAccountId, userId: session.user.id, isActive: true },
+      })
+      if (!targetAccount) {
+        return NextResponse.json(
+          { error: 'Cuenta destino no encontrada' },
+          { status: 404 }
+        )
+      }
+      // Validar misma moneda
+      const sourceAccount = await db.bankAccount.findFirst({
+        where: { id: data.bankAccountId!, userId: session.user.id },
+        select: { currency: true },
+      })
+      if (sourceAccount && targetAccount.currency !== sourceAccount.currency) {
+        return NextResponse.json(
+          { error: 'Las cuentas deben tener la misma moneda para transferir' },
+          { status: 422 }
+        )
+      }
+    }
+
     // Crear transacción y actualizar balances en una transacción de DB
     const transaction = await db.$transaction(async (tx) => {
       // Crear la transacción
@@ -187,12 +229,16 @@ export async function POST(request: NextRequest) {
           creditCardId: data.creditCardId,
           isCardPayment: data.isCardPayment,
           targetCardId: data.targetCardId,
+          targetAccountId: data.targetAccountId,
         },
         include: {
           bankAccount: {
             select: { id: true, name: true, color: true },
           },
           creditCard: {
+            select: { id: true, name: true, color: true },
+          },
+          targetAccount: {
             select: { id: true, name: true, color: true },
           },
         },
@@ -255,6 +301,18 @@ export async function POST(request: NextRequest) {
             currency: data.currency,
             creditLimit: 0,
             balance: 0,
+          },
+        })
+      }
+
+      // Si es transferencia, incrementar balance de cuenta destino
+      if (data.type === 'transfer' && data.targetAccountId) {
+        await tx.bankAccount.update({
+          where: { id: data.targetAccountId },
+          data: {
+            balance: {
+              increment: data.amount,
+            },
           },
         })
       }

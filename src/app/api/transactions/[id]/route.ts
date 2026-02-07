@@ -30,6 +30,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         targetCard: {
           select: { id: true, name: true, color: true },
         },
+        targetAccount: {
+          select: { id: true, name: true, color: true },
+        },
       },
     })
 
@@ -83,6 +86,22 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const data = result.data
+
+    // Validar transferencias
+    if (data.type === 'transfer') {
+      if (!data.bankAccountId || !data.targetAccountId) {
+        return NextResponse.json(
+          { error: 'La transferencia requiere cuenta origen y cuenta destino' },
+          { status: 422 }
+        )
+      }
+      if (data.bankAccountId === data.targetAccountId) {
+        return NextResponse.json(
+          { error: 'La cuenta origen y destino deben ser diferentes' },
+          { status: 422 }
+        )
+      }
+    }
 
     // Actualizar transacción y balances en una transacción de DB
     const transaction = await db.$transaction(async (tx) => {
@@ -152,6 +171,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         })
       }
 
+      // Revertir transferencia anterior
+      if (existingTransaction.type === 'transfer' && existingTransaction.targetAccountId) {
+        await tx.bankAccount.update({
+          where: { id: existingTransaction.targetAccountId },
+          data: {
+            balance: {
+              decrement: Number(existingTransaction.amount),
+            },
+          },
+        })
+      }
+
       // Actualizar la transacción
       const updatedTransaction = await tx.transaction.update({
         where: { id },
@@ -166,12 +197,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
           creditCardId: data.creditCardId,
           isCardPayment: data.isCardPayment,
           targetCardId: data.targetCardId,
+          targetAccountId: data.targetAccountId,
         },
         include: {
           bankAccount: {
             select: { id: true, name: true, color: true },
           },
           creditCard: {
+            select: { id: true, name: true, color: true },
+          },
+          targetAccount: {
             select: { id: true, name: true, color: true },
           },
         },
@@ -233,6 +268,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             currency: data.currency,
             creditLimit: 0,
             balance: 0,
+          },
+        })
+      }
+
+      // Aplicar nueva transferencia
+      if (data.type === 'transfer' && data.targetAccountId) {
+        await tx.bankAccount.update({
+          where: { id: data.targetAccountId },
+          data: {
+            balance: {
+              increment: data.amount,
+            },
           },
         })
       }
@@ -336,6 +383,18 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
             currency: existingTransaction.currency as Currency,
             creditLimit: 0,
             balance: Number(existingTransaction.amount),
+          },
+        })
+      }
+
+      // Revertir transferencia
+      if (existingTransaction.type === 'transfer' && existingTransaction.targetAccountId) {
+        await tx.bankAccount.update({
+          where: { id: existingTransaction.targetAccountId },
+          data: {
+            balance: {
+              decrement: Number(existingTransaction.amount),
+            },
           },
         })
       }

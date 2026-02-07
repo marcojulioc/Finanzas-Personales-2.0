@@ -60,9 +60,10 @@ export async function GET(request: NextRequest) {
       if (t.type === 'expense') {
         categoryTotals[t.category] = (categoryTotals[t.category] || 0) + amount
         totalExpenses += amount
-      } else {
+      } else if (t.type === 'income') {
         totalIncome += amount
       }
+      // transfers excluded from income/expense totals
     })
 
     const categoryDistribution = Object.entries(categoryTotals)
@@ -92,9 +93,10 @@ export async function GET(request: NextRequest) {
       if (monthlyData[monthKey]) {
         if (t.type === 'income') {
           monthlyData[monthKey].income += amount
-        } else {
+        } else if (t.type === 'expense') {
           monthlyData[monthKey].expenses += amount
         }
+        // transfers excluded
       }
     })
 
@@ -120,7 +122,9 @@ export async function GET(request: NextRequest) {
 
     let runningBalance = previousTransactions.reduce((acc, t) => {
       const amount = new Decimal(t.amount).toNumber()
-      return t.type === 'income' ? acc + amount : acc - amount
+      if (t.type === 'income') return acc + amount
+      if (t.type === 'expense') return acc - amount
+      return acc // transfers don't affect net balance
     }, 0)
 
     const balanceTrend: { date: string; balance: number }[] = []
@@ -128,6 +132,7 @@ export async function GET(request: NextRequest) {
 
     // Group transactions by date and calculate daily balance changes
     transactions.forEach((t) => {
+      if (t.type === 'transfer') return // transfers don't affect net balance
       const dateKey = new Date(t.date).toISOString().slice(0, 10)
       const amount = new Decimal(t.amount).toNumber()
       const change = t.type === 'income' ? amount : -amount

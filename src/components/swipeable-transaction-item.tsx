@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { motion, PanInfo, useMotionValue, useTransform } from 'framer-motion'
-import { Trash2, Pencil } from 'lucide-react'
+import { Trash2, Pencil, ArrowRightLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useHapticFeedback } from '@/hooks/use-haptic-feedback'
 import { Badge } from './ui/badge'
@@ -11,7 +11,7 @@ import { formatCurrency, formatDate } from '@/lib/format-utils'
 interface SwipeableTransactionItemProps {
   transaction: {
     id: string
-    type: 'income' | 'expense'
+    type: 'income' | 'expense' | 'transfer'
     amount: number
     currency: string
     category: string
@@ -19,6 +19,7 @@ interface SwipeableTransactionItemProps {
     date: string
     bankAccount?: { id: string; name: string; color: string | null } | null
     creditCard?: { id: string; name: string; color: string | null } | null
+    targetAccount?: { id: string; name: string; color: string | null } | null
   }
   category?: {
     name: string
@@ -121,10 +122,12 @@ export function SwipeableTransactionItem({
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0"
             style={{
-              backgroundColor: `${category?.color || '#6b7280'}20`,
+              backgroundColor: transaction.type === 'transfer'
+                ? '#3b82f620'
+                : `${category?.color || '#6b7280'}20`,
             }}
           >
-            {category?.icon || '?'}
+            {transaction.type === 'transfer' ? <ArrowRightLeft className="w-5 h-5 text-primary" /> : (category?.icon || '?')}
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-medium truncate">
@@ -132,7 +135,18 @@ export function SwipeableTransactionItem({
             </p>
             <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
               <span>{formatDate(transaction.date)}</span>
-              {(transaction.bankAccount || transaction.creditCard) && (
+              {transaction.type === 'transfer' && transaction.bankAccount && transaction.targetAccount ? (
+                <>
+                  <span>•</span>
+                  <Badge variant="outline" className="font-normal" style={{ borderColor: transaction.bankAccount.color || undefined }}>
+                    {transaction.bankAccount.name}
+                  </Badge>
+                  <span>→</span>
+                  <Badge variant="outline" className="font-normal" style={{ borderColor: transaction.targetAccount.color || undefined }}>
+                    {transaction.targetAccount.name}
+                  </Badge>
+                </>
+              ) : (transaction.bankAccount || transaction.creditCard) && (
                 <>
                   <span>•</span>
                   <Badge
@@ -168,10 +182,12 @@ export function SwipeableTransactionItem({
             'font-mono font-bold text-sm sm:text-base shrink-0',
             transaction.type === 'income'
               ? 'text-success'
+              : transaction.type === 'transfer'
+              ? 'text-primary'
               : 'text-danger'
           )}
         >
-          {transaction.type === 'income' ? '+' : '-'}
+          {transaction.type === 'income' ? '+' : transaction.type === 'transfer' ? '' : '-'}
           {formatCurrency(
             Number(transaction.amount),
             transaction.currency

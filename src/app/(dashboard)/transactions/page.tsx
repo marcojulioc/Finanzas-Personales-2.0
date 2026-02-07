@@ -63,7 +63,7 @@ import { TransactionPageSkeleton } from '@/components/skeletons'
 
 interface Transaction {
   id: string
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'transfer'
   amount: number
   currency: string
   category: string
@@ -73,12 +73,14 @@ interface Transaction {
   creditCardId: string | null
   isCardPayment: boolean
   targetCardId: string | null
+  targetAccountId: string | null
   bankAccount: { id: string; name: string; color: string | null } | null
   creditCard: { id: string; name: string; color: string | null } | null
+  targetAccount: { id: string; name: string; color: string | null } | null
 }
 
 const transactionSchema = z.object({
-  type: z.enum(['income', 'expense']),
+  type: z.enum(['income', 'expense', 'transfer']),
   amount: z.number().positive('El monto debe ser mayor a 0'),
   currency: z.string().min(1, 'Selecciona una moneda'),
   category: z.string().min(1, 'Selecciona una categoría'),
@@ -89,6 +91,7 @@ const transactionSchema = z.object({
   creditCardId: z.string().optional(),
   isCardPayment: z.boolean(),
   targetCardId: z.string().optional(),
+  targetAccountId: z.string().optional(),
 })
 
 type TransactionFormData = z.infer<typeof transactionSchema>
@@ -186,6 +189,7 @@ export default function TransactionsPage() {
       creditCardId: '',
       isCardPayment: false,
       targetCardId: '',
+      targetAccountId: '',
     })
     setIsDialogOpen(true)
   }
@@ -218,6 +222,7 @@ export default function TransactionsPage() {
       creditCardId: transaction.creditCardId || '',
       isCardPayment: transaction.isCardPayment,
       targetCardId: transaction.targetCardId || '',
+      targetAccountId: transaction.targetAccountId || '',
     })
     setIsDialogOpen(true)
   }
@@ -233,8 +238,9 @@ export default function TransactionsPage() {
         date: new Date(data.date + 'T12:00:00'),
         bankAccountId: data.sourceType === 'account' ? data.bankAccountId : undefined,
         creditCardId: data.sourceType === 'card' ? data.creditCardId : undefined,
-        isCardPayment: data.isCardPayment,
-        targetCardId: data.isCardPayment ? data.targetCardId : undefined,
+        isCardPayment: data.type === 'transfer' ? false : data.isCardPayment,
+        targetCardId: data.isCardPayment && data.type !== 'transfer' ? data.targetCardId : undefined,
+        targetAccountId: data.type === 'transfer' ? data.targetAccountId : undefined,
       }
 
       if (editingTransaction) {
@@ -295,6 +301,7 @@ export default function TransactionsPage() {
   }
 
   // Use filtered categories from hook based on transaction type
+  // Transfers auto-set category, so this is only used for income/expense
   const categories = watchType === 'expense' ? expenseCategories : incomeCategories
 
   const handleRefresh = async () => {
@@ -363,6 +370,7 @@ export default function TransactionsPage() {
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="income">Ingresos</SelectItem>
                 <SelectItem value="expense">Gastos</SelectItem>
+                <SelectItem value="transfer">Transferencias</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterCategory} onValueChange={handleFilterCategoryChange}>
@@ -466,7 +474,7 @@ export default function TransactionsPage() {
         description={
           editingTransaction
             ? 'Modifica los datos de la transaccion'
-            : 'Registra un nuevo ingreso o gasto'
+            : 'Registra un ingreso, gasto o transferencia'
         }
         className="max-w-lg max-h-[90vh] overflow-y-auto"
       >
@@ -497,46 +505,62 @@ export default function TransactionsPage() {
               >
                 Ingreso
               </Button>
+              <Button
+                type="button"
+                variant={watchType === 'transfer' ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => {
+                  setValue('type', 'transfer')
+                  setValue('category', 'Transferencia')
+                  setValue('sourceType', 'account')
+                  setValue('isCardPayment', false)
+                  setValue('creditCardId', '')
+                }}
+              >
+                Transferencia
+              </Button>
             </div>
 
             {/* Origen/Destino */}
-            <div className="space-y-2">
-              <Label>
-                {watchType === 'expense' ? 'Pagar con' : 'Recibir en'}
-              </Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={watchSourceType === 'account' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setValue('sourceType', 'account')}
-                >
-                  Cuenta
-                </Button>
-                {watchType === 'expense' && (
+            {watchType !== 'transfer' && (
+              <div className="space-y-2">
+                <Label>
+                  {watchType === 'expense' ? 'Pagar con' : 'Recibir en'}
+                </Label>
+                <div className="flex gap-2">
                   <Button
                     type="button"
-                    variant={watchSourceType === 'card' ? 'default' : 'outline'}
+                    variant={watchSourceType === 'account' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setValue('sourceType', 'card')}
+                    onClick={() => setValue('sourceType', 'account')}
                   >
-                    Tarjeta
+                    Cuenta
                   </Button>
-                )}
-                <Button
-                  type="button"
-                  variant={watchSourceType === 'cash' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setValue('sourceType', 'cash')}
-                >
-                  Efectivo
-                </Button>
+                  {watchType === 'expense' && (
+                    <Button
+                      type="button"
+                      variant={watchSourceType === 'card' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setValue('sourceType', 'card')}
+                    >
+                      Tarjeta
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant={watchSourceType === 'cash' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setValue('sourceType', 'cash')}
+                  >
+                    Efectivo
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
 
             {watchSourceType === 'account' && accounts.length > 0 && (
               <div className="space-y-2">
-                <Label>Cuenta</Label>
+                <Label>{watchType === 'transfer' ? 'Cuenta origen' : 'Cuenta'}</Label>
                 <Select
                   value={watch('bankAccountId')}
                   onValueChange={(value) => setValue('bankAccountId', value)}
@@ -550,6 +574,29 @@ export default function TransactionsPage() {
                         {account.name}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {watchType === 'transfer' && accounts.length > 1 && (
+              <div className="space-y-2">
+                <Label>Cuenta destino</Label>
+                <Select
+                  value={watch('targetAccountId')}
+                  onValueChange={(value) => setValue('targetAccountId', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona cuenta destino" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts
+                      .filter((a) => a.id !== watch('bankAccountId'))
+                      .map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -612,28 +659,30 @@ export default function TransactionsPage() {
               </div>
             </div>
 
-            {/* Categoria */}
-            <div className="space-y-2">
-              <Label>Categoria</Label>
-              <Select
-                value={watch('category')}
-                onValueChange={(value) => setValue('category', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.name}>
-                      {cat.icon} {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.category && (
-                <p className="text-sm text-danger">{errors.category.message}</p>
-              )}
-            </div>
+            {/* Categoria (oculta para transferencias) */}
+            {watchType !== 'transfer' && (
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <Select
+                  value={watch('category')}
+                  onValueChange={(value) => setValue('category', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.name}>
+                        {cat.icon} {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.category && (
+                  <p className="text-sm text-danger">{errors.category.message}</p>
+                )}
+              </div>
+            )}
 
             {/* Pago de tarjeta (solo para gastos desde cuenta) */}
             {watchType === 'expense' &&

@@ -97,7 +97,7 @@ export const creditCardSchema = z.object({
 
 // Transacciones
 export const transactionSchema = z.object({
-  type: z.enum(['income', 'expense'], {
+  type: z.enum(['income', 'expense', 'transfer'], {
     message: 'Tipo de transacción inválido',
   }),
   amount: z.number().positive('El monto debe ser mayor a 0'),
@@ -115,6 +115,7 @@ export const transactionSchema = z.object({
   creditCardId: z.string().cuid().optional(),
   isCardPayment: z.boolean().default(false),
   targetCardId: z.string().cuid().optional(),
+  targetAccountId: z.string().cuid().optional(),
 })
 
 // Presupuestos
@@ -126,7 +127,7 @@ export const budgetSchema = z.object({
 
 // Transacciones recurrentes
 export const recurringTransactionSchema = z.object({
-  type: z.enum(['income', 'expense'], {
+  type: z.enum(['income', 'expense', 'transfer'], {
     message: 'Tipo de transacción inválido',
   }),
   amount: z.number().positive('El monto debe ser mayor a 0'),
@@ -143,6 +144,7 @@ export const recurringTransactionSchema = z.object({
   creditCardId: z.string().cuid().optional(),
   isCardPayment: z.boolean().default(false),
   targetCardId: z.string().cuid().optional(),
+  targetAccountId: z.string().cuid().optional(),
   frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'yearly'], {
     message: 'Frecuencia inválida',
   }),

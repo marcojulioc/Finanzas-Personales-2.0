@@ -4,7 +4,7 @@ import useSWR from 'swr'
 
 export interface Transaction {
   id: string
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'transfer'
   amount: number
   currency: string
   category: string
@@ -14,8 +14,10 @@ export interface Transaction {
   creditCardId: string | null
   isCardPayment: boolean
   targetCardId: string | null
+  targetAccountId: string | null
   bankAccount: { id: string; name: string; color: string | null } | null
   creditCard: { id: string; name: string; color: string | null } | null
+  targetAccount: { id: string; name: string; color: string | null } | null
 }
 
 interface Pagination {

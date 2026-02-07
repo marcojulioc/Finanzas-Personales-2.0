@@ -51,6 +51,7 @@ enum Currency {
 enum TransactionType {
   income
   expense
+  transfer
 }
 
 enum RecurringFrequency {
@@ -154,8 +155,10 @@ model BankAccount {
   isActive    Boolean     @default(true)
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-  recurringTransactions RecurringTransaction[]
+  transactions Transaction[] @relation("AccountTransactions")
+  transfersReceived Transaction[] @relation("TransferDestination")
+  recurringTransactions RecurringTransaction[] @relation("RecurringAccountTransactions")
+  recurringTransfersReceived RecurringTransaction[] @relation("RecurringTransferDestination")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -214,7 +217,7 @@ model Transaction {
 
   // Relación con cuenta bancaria (opcional)
   bankAccountId String?
-  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id])
+  bankAccount   BankAccount? @relation("AccountTransactions", fields: [bankAccountId], references: [id])
 
   // Relación con tarjeta de crédito (opcional)
   creditCardId String?
@@ -224,6 +227,10 @@ model Transaction {
   isCardPayment Boolean     @default(false)
   targetCardId  String?
   targetCard    CreditCard? @relation("CardPayments", fields: [targetCardId], references: [id])
+
+  // Para transferencias entre cuentas
+  targetAccountId String?
+  targetAccount   BankAccount? @relation("TransferDestination", fields: [targetAccountId], references: [id])
 
   // Para transacciones generadas automáticamente
   recurringTransactionId String?
@@ -237,6 +244,7 @@ model Transaction {
   @@index([userId, date])
   @@index([bankAccountId])
   @@index([creditCardId])
+  @@index([targetAccountId])
   @@index([recurringTransactionId])
 }
 
@@ -280,6 +288,7 @@ model RecurringTransaction {
   creditCardId      String?
   isCardPayment     Boolean             @default(false)
   targetCardId      String?
+  targetAccountId   String?
 
   // Campos específicos de recurrencia
   frequency         RecurringFrequency
@@ -291,9 +300,10 @@ model RecurringTransaction {
 
   // Relaciones
   user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bankAccount       BankAccount?        @relation(fields: [bankAccountId], references: [id])
+  bankAccount       BankAccount?        @relation("RecurringAccountTransactions", fields: [bankAccountId], references: [id])
   creditCard        CreditCard?         @relation("RecurringCardTransactions", fields: [creditCardId], references: [id])
   targetCard        CreditCard?         @relation("RecurringCardPayments", fields: [targetCardId], references: [id])
+  targetAccount     BankAccount?        @relation("RecurringTransferDestination", fields: [targetAccountId], references: [id])
   generatedTransactions Transaction[]   @relation("GeneratedFromRecurring")
 
   createdAt         DateTime            @default(now())

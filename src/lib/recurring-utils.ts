@@ -128,6 +128,7 @@ export async function generatePendingTransactions(userId: string): Promise<numbe
             creditCardId: recurring.creditCardId,
             isCardPayment: recurring.isCardPayment,
             targetCardId: recurring.targetCardId,
+            targetAccountId: recurring.targetAccountId,
             recurringTransactionId: recurring.id,
           },
         })
@@ -182,6 +183,16 @@ export async function generatePendingTransactions(userId: string): Promise<numbe
               currency: recurring.currency,
               creditLimit: 0,
               balance: 0,
+            },
+          })
+        }
+
+        // If transfer, increment target account balance
+        if (recurring.type === 'transfer' && recurring.targetAccountId) {
+          await tx.bankAccount.update({
+            where: { id: recurring.targetAccountId },
+            data: {
+              balance: { increment: amount },
             },
           })
         }

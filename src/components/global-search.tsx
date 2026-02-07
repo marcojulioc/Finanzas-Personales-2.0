@@ -37,7 +37,7 @@ interface Transaction {
   description: string | null
   amount: number
   currency: string
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'transfer'
   date: string
   category: string
 }
@@ -176,9 +176,9 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                         </div>
                         <span className={cn(
                           'font-mono text-sm shrink-0',
-                          tx.type === 'income' ? 'text-success' : 'text-danger'
+                          tx.type === 'income' ? 'text-success' : tx.type === 'transfer' ? 'text-primary' : 'text-danger'
                         )}>
-                          {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount, tx.currency)}
+                          {tx.type === 'income' ? '+' : tx.type === 'transfer' ? '' : '-'}{formatCurrency(tx.amount, tx.currency)}
                         </span>
                       </Command.Item>
                     ))}
