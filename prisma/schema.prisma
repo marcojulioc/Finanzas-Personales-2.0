@@ -136,6 +136,7 @@ model User {
   recurringTransactions RecurringTransaction[]
   notifications Notification[]
   categories Category[]
+  netWorthSnapshots NetWorthSnapshot[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -348,4 +349,20 @@ model Category {
 
   @@unique([userId, name, type])
   @@index([userId, type, isActive])
+}
+
+model NetWorthSnapshot {
+  id               String   @id @default(cuid())
+  userId           String
+  date             DateTime @db.Date
+  totalAssets      Decimal  @db.Decimal(12, 2)
+  totalLiabilities Decimal  @db.Decimal(12, 2)
+  netWorth         Decimal  @db.Decimal(12, 2)
+  breakdown        Json?
+  exchangeRate     Decimal  @db.Decimal(10, 4) @default(17)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }

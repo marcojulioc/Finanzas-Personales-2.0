@@ -30,6 +30,7 @@ import { Loader2, TrendingUp, TrendingDown, Wallet, Calendar, ArrowUpRight, Arro
 import { formatCurrency, parseLocalDate } from '@/lib/format-utils'
 import { getCategoryById } from '@/lib/categories'
 import { useReports } from '@/hooks/use-reports'
+import { NetWorthSection } from '@/components/net-worth-section'
 
 const PERIOD_OPTIONS = [
   { value: 'month', label: 'Este mes' },
@@ -82,6 +83,11 @@ export default function ReportsPage() {
           </SelectContent>
         </Select>
       </div>
+
+      <Separator />
+
+      {/* Net Worth Section */}
+      <NetWorthSection />
 
       <Separator />
 
