@@ -10,6 +10,7 @@ export interface BankAccount {
   currency: string
   balance: number
   color: string | null
+  interestRate: number | null
   isActive: boolean
 }
 

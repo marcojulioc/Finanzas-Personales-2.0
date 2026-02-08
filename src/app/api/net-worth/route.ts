@@ -52,7 +52,7 @@ export async function GET() {
     const userId = session.user.id
 
     // Fetch user's primary currency, accounts and cards in parallel
-    const [user, bankAccounts, creditCards] = await Promise.all([
+    const [user, bankAccounts, creditCards, activeLoans] = await Promise.all([
       db.user.findUnique({
         where: { id: userId },
         select: { primaryCurrency: true },
@@ -65,6 +65,10 @@ export async function GET() {
         where: { userId, isActive: true },
         orderBy: { createdAt: 'asc' },
         include: { balances: true },
+      }),
+      db.loan.findMany({
+        where: { userId, isActive: true },
+        orderBy: { createdAt: 'asc' },
       }),
     ])
 
@@ -109,7 +113,23 @@ export async function GET() {
       }
     })
 
-    const totalLiabilities = cards.reduce((sum, c) => sum + c.totalDebt, 0)
+    const loans = activeLoans.map((loan) => {
+      const remaining = Number(loan.remainingBalance)
+      const balanceConverted = convertToPrimary(remaining, loan.currency, primaryCurrency)
+      return {
+        id: loan.id,
+        name: loan.name,
+        institution: loan.institution,
+        remainingBalance: remaining,
+        currency: loan.currency,
+        balanceConverted,
+        color: loan.color,
+      }
+    })
+
+    const totalCardDebt = cards.reduce((sum, c) => sum + c.totalDebt, 0)
+    const totalLoanDebt = loans.reduce((sum, l) => sum + l.balanceConverted, 0)
+    const totalLiabilities = totalCardDebt + totalLoanDebt
     const netWorth = totalAssets - totalLiabilities
 
     // Upsert today's snapshot
@@ -131,6 +151,14 @@ export async function GET() {
         bankName: c.bankName,
         totalDebt: c.totalDebt,
         balances: c.balances,
+      })),
+      loans: loans.map((l) => ({
+        id: l.id,
+        name: l.name,
+        institution: l.institution,
+        remainingBalance: l.remainingBalance,
+        currency: l.currency,
+        balanceConverted: l.balanceConverted,
       })),
     }
 
@@ -177,6 +205,7 @@ export async function GET() {
           netWorth,
           accounts,
           cards,
+          loans,
         },
         history: history.map((h) => ({
           date: h.date.toISOString().slice(0, 10),

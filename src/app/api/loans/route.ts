@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { bankAccountSchema } from '@/lib/validations'
+import { loanSchema } from '@/lib/validations'
 
-// GET /api/accounts - Listar cuentas del usuario
+// GET /api/loans - Listar préstamos del usuario
 export async function GET() {
   try {
     const session = await auth()
@@ -11,22 +11,22 @@ export async function GET() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const accounts = await db.bankAccount.findMany({
+    const loans = await db.loan.findMany({
       where: { userId: session.user.id, isActive: true },
       orderBy: { createdAt: 'asc' },
     })
 
-    return NextResponse.json({ data: accounts })
+    return NextResponse.json({ data: loans })
   } catch (error) {
-    console.error('Error fetching accounts:', error)
+    console.error('Error fetching loans:', error)
     return NextResponse.json(
-      { error: 'Error al obtener las cuentas' },
+      { error: 'Error al obtener los préstamos' },
       { status: 500 }
     )
   }
 }
 
-// POST /api/accounts - Crear cuenta
+// POST /api/loans - Crear préstamo
 export async function POST(request: NextRequest) {
   try {
     const session = await auth()
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const result = bankAccountSchema.safeParse(body)
+    const result = loanSchema.safeParse(body)
 
     if (!result.success) {
       return NextResponse.json(
@@ -44,24 +44,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const account = await db.bankAccount.create({
+    const loan = await db.loan.create({
       data: {
         userId: session.user.id,
         name: result.data.name,
-        bankName: result.data.bankName,
-        accountType: result.data.accountType,
+        institution: result.data.institution,
+        originalAmount: result.data.originalAmount,
+        remainingBalance: result.data.remainingBalance,
         currency: result.data.currency,
-        balance: result.data.balance,
+        monthlyPayment: result.data.monthlyPayment,
+        interestRate: result.data.interestRate,
+        startDate: result.data.startDate,
+        endDate: result.data.endDate ?? null,
+        frequency: result.data.frequency,
         color: result.data.color,
-        interestRate: result.data.interestRate ?? null,
       },
     })
 
-    return NextResponse.json({ data: account }, { status: 201 })
+    return NextResponse.json({ data: loan }, { status: 201 })
   } catch (error) {
-    console.error('Error creating account:', error)
+    console.error('Error creating loan:', error)
     return NextResponse.json(
-      { error: 'Error al crear la cuenta' },
+      { error: 'Error al crear el préstamo' },
       { status: 500 }
     )
   }

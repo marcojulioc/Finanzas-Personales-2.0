@@ -56,6 +56,7 @@ const accountSchema = z.object({
   currency: z.string().min(1, 'Selecciona una moneda'),
   balance: z.number().min(0, 'El balance no puede ser negativo'),
   color: z.string().optional(),
+  interestRate: z.number().min(0).max(100).optional().nullable(),
 })
 
 type AccountFormData = z.infer<typeof accountSchema>
@@ -84,6 +85,7 @@ export default function AccountsPage() {
       accountType: 'savings',
       currency: primaryCurrency || 'USD',
       balance: 0,
+      interestRate: null,
     },
   })
 
@@ -96,6 +98,7 @@ export default function AccountsPage() {
       accountType: 'savings',
       currency: primaryCurrency || 'USD',
       balance: 0,
+      interestRate: null,
     })
     setIsDialogOpen(true)
   }
@@ -109,6 +112,7 @@ export default function AccountsPage() {
       accountType: account.accountType,
       currency: account.currency,
       balance: Number(account.balance),
+      interestRate: account.interestRate != null ? Number(account.interestRate) : null,
     })
     setIsDialogOpen(true)
   }
@@ -278,6 +282,12 @@ export default function AccountsPage() {
                     <span className="text-muted-foreground">Moneda</span>
                     <span>{account.currency}</span>
                   </div>
+                  {account.interestRate != null && Number(account.interestRate) > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Tasa mensual</span>
+                      <span>{Number(account.interestRate)}%</span>
+                    </div>
+                  )}
                   <div className="pt-2 border-t">
                     <p className="text-sm text-muted-foreground">Balance</p>
                     <p className="text-2xl font-bold font-mono text-success">
@@ -400,6 +410,26 @@ export default function AccountsPage() {
                 <p className="text-sm text-danger">{errors.balance.message}</p>
               )}
             </div>
+
+            {watch('accountType') === 'savings' && (
+              <div className="space-y-2">
+                <Label htmlFor="interestRate">Tasa de interés mensual (%)</Label>
+                <Input
+                  id="interestRate"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  placeholder="Ej: 1.5"
+                  {...register('interestRate', {
+                    setValueAs: (v) => (v === '' || v === null || v === undefined) ? null : Number(v),
+                  })}
+                />
+                {errors.interestRate && (
+                  <p className="text-sm text-danger">{errors.interestRate.message}</p>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Color</Label>

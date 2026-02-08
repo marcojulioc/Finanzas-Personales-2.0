@@ -17,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Repeat, PiggyBank, BarChart3, Tags } from 'lucide-react'
+import { Repeat, Banknote, PiggyBank, BarChart3, Tags } from 'lucide-react'
 
 const mainNavItems = [
   { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
@@ -27,6 +27,7 @@ const mainNavItems = [
 ]
 
 const moreNavItems = [
+  { href: '/loans', label: 'Préstamos', icon: Banknote },
   { href: '/recurring', label: 'Recurrentes', icon: Repeat },
   { href: '/budgets', label: 'Presupuestos', icon: PiggyBank },
   { href: '/reports', label: 'Reportes', icon: BarChart3 },

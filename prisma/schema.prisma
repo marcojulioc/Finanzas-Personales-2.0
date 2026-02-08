@@ -137,6 +137,7 @@ model User {
   notifications Notification[]
   categories Category[]
   netWorthSnapshots NetWorthSnapshot[]
+  loans Loan[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -152,8 +153,9 @@ model BankAccount {
   accountType AccountType
   currency    Currency
   balance     Decimal     @db.Decimal(12, 2)
-  color       String?     @db.VarChar(7)
-  isActive    Boolean     @default(true)
+  color        String?     @db.VarChar(7)
+  interestRate Decimal?    @db.Decimal(5, 2)
+  isActive     Boolean     @default(true)
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[] @relation("AccountTransactions")
@@ -365,4 +367,28 @@ model NetWorthSnapshot {
 
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+model Loan {
+  id               String             @id @default(cuid())
+  userId           String
+  name             String             @db.VarChar(50)
+  institution      String             @db.VarChar(50)
+  originalAmount   Decimal            @db.Decimal(12, 2)
+  remainingBalance Decimal            @db.Decimal(12, 2)
+  currency         Currency
+  monthlyPayment   Decimal            @db.Decimal(12, 2)
+  interestRate     Decimal            @db.Decimal(5, 2)
+  startDate        DateTime           @db.Date
+  endDate          DateTime?          @db.Date
+  frequency        RecurringFrequency @default(monthly)
+  color            String?            @db.VarChar(7)
+  isActive         Boolean            @default(true)
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([userId])
 }

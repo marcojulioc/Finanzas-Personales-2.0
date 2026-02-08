@@ -29,6 +29,15 @@ export interface NetWorthData {
       }[]
       color: string | null
     }[]
+    loans: {
+      id: string
+      name: string
+      institution: string
+      remainingBalance: number
+      currency: string
+      balanceConverted: number
+      color: string | null
+    }[]
   }
   history: {
     date: string

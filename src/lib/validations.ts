@@ -59,6 +59,7 @@ export const bankAccountSchema = z.object({
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, 'Color inválido')
     .optional(),
+  interestRate: z.number().min(0).max(100).optional().nullable(),
 })
 
 // Balance de tarjeta por moneda
@@ -152,6 +153,23 @@ export const recurringTransactionSchema = z.object({
   endDate: z.coerce.date().optional(),
 })
 
+// Préstamos
+export const loanSchema = z.object({
+  name: z.string().min(2, 'Mínimo 2 caracteres').max(50, 'Máximo 50 caracteres'),
+  institution: z.string().min(2, 'Mínimo 2 caracteres').max(50, 'Máximo 50 caracteres'),
+  originalAmount: z.number().positive('El monto debe ser mayor a 0').max(999999999999),
+  remainingBalance: z.number().min(0, 'El balance no puede ser negativo').max(999999999999),
+  currency: currencyEnum,
+  monthlyPayment: z.number().positive('El pago debe ser mayor a 0'),
+  interestRate: z.number().min(0).max(100),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date().optional().nullable(),
+  frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'yearly'], {
+    message: 'Frecuencia inválida',
+  }),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color inválido').optional(),
+})
+
 // Tipos inferidos
 export type LoginInput = z.infer<typeof loginSchema>
 export type RegisterInput = z.infer<typeof registerSchema>
@@ -161,3 +179,4 @@ export type CreditCardInput = z.infer<typeof creditCardSchema>
 export type TransactionInput = z.infer<typeof transactionSchema>
 export type BudgetInput = z.infer<typeof budgetSchema>
 export type RecurringTransactionInput = z.infer<typeof recurringTransactionSchema>
+export type LoanInput = z.infer<typeof loanSchema>

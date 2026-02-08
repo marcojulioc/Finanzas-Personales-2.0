@@ -103,8 +103,20 @@ export function NetWorthSection() {
                     </span>
                   </div>
                 ))}
-                {current.cards.length === 0 && (
-                  <p className="text-xs text-muted-foreground">Sin tarjetas</p>
+                {current.loans?.map((loan) => (
+                  <div key={loan.id} className="flex items-center gap-2 text-sm">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: loan.color || '#6b7280' }}
+                    />
+                    <span className="truncate text-muted-foreground">{loan.name}</span>
+                    <span className="ml-auto font-mono text-xs">
+                      {fmt(loan.balanceConverted)}
+                    </span>
+                  </div>
+                ))}
+                {current.cards.length === 0 && (!current.loans || current.loans.length === 0) && (
+                  <p className="text-xs text-muted-foreground">Sin deudas</p>
                 )}
               </div>
             </div>
