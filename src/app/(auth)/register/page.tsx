@@ -83,7 +83,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <Card>
+    <Card className="backdrop-blur-xl bg-card/80 shadow-xl border-border/50">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl font-display">Crear Cuenta</CardTitle>
         <CardDescription>
