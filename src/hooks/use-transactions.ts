@@ -15,7 +15,8 @@ export interface Transaction {
   isCardPayment: boolean
   targetCardId: string | null
   targetAccountId: string | null
-  bankAccount: { id: string; name: string; color: string | null } | null
+  exchangeRate: number | null
+  bankAccount: { id: string; name: string; color: string | null; currency: string } | null
   creditCard: { id: string; name: string; color: string | null } | null
   targetAccount: { id: string; name: string; color: string | null } | null
 }

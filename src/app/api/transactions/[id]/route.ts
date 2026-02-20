@@ -22,7 +22,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       where: { id, userId: session.user.id },
       include: {
         bankAccount: {
-          select: { id: true, name: true, color: true },
+          select: { id: true, name: true, color: true, currency: true },
         },
         creditCard: {
           select: { id: true, name: true, color: true },
@@ -107,10 +107,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const transaction = await db.$transaction(async (tx) => {
       // Revertir el efecto de la transacción anterior en cuenta bancaria
       if (existingTransaction.bankAccountId) {
+        const oldAmount = Number(existingTransaction.amount)
+        const oldBankAmount = (existingTransaction.isCardPayment && existingTransaction.exchangeRate)
+          ? oldAmount * Number(existingTransaction.exchangeRate)
+          : oldAmount
         const oldBalanceChange =
           existingTransaction.type === 'income'
-            ? -Number(existingTransaction.amount)
-            : Number(existingTransaction.amount)
+            ? -oldBankAmount
+            : oldBankAmount
         await tx.bankAccount.update({
           where: { id: existingTransaction.bankAccountId },
           data: {
@@ -198,10 +202,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
           isCardPayment: data.isCardPayment,
           targetCardId: data.targetCardId,
           targetAccountId: data.targetAccountId,
+          exchangeRate: data.exchangeRate ?? null,
         },
         include: {
           bankAccount: {
-            select: { id: true, name: true, color: true },
+            select: { id: true, name: true, color: true, currency: true },
           },
           creditCard: {
             select: { id: true, name: true, color: true },
@@ -214,7 +219,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
       // Aplicar el nuevo efecto en cuenta bancaria
       if (data.bankAccountId) {
-        const newBalanceChange = data.type === 'income' ? data.amount : -data.amount
+        const newBankAmount = (data.isCardPayment && data.exchangeRate)
+          ? data.amount * data.exchangeRate
+          : data.amount
+        const newBalanceChange = data.type === 'income' ? newBankAmount : -newBankAmount
         await tx.bankAccount.update({
           where: { id: data.bankAccountId },
           data: {
@@ -323,10 +331,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     await db.$transaction(async (tx) => {
       // Revertir el efecto en cuenta bancaria
       if (existingTransaction.bankAccountId) {
+        const oldAmount = Number(existingTransaction.amount)
+        const oldBankAmount = (existingTransaction.isCardPayment && existingTransaction.exchangeRate)
+          ? oldAmount * Number(existingTransaction.exchangeRate)
+          : oldAmount
         const balanceChange =
           existingTransaction.type === 'income'
-            ? -Number(existingTransaction.amount)
-            : Number(existingTransaction.amount)
+            ? -oldBankAmount
+            : oldBankAmount
         await tx.bankAccount.update({
           where: { id: existingTransaction.bankAccountId },
           data: {

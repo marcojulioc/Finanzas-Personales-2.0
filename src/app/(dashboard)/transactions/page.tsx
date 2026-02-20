@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -74,7 +74,8 @@ interface Transaction {
   isCardPayment: boolean
   targetCardId: string | null
   targetAccountId: string | null
-  bankAccount: { id: string; name: string; color: string | null } | null
+  exchangeRate: number | null
+  bankAccount: { id: string; name: string; color: string | null; currency: string } | null
   creditCard: { id: string; name: string; color: string | null } | null
   targetAccount: { id: string; name: string; color: string | null } | null
 }
@@ -92,6 +93,7 @@ const transactionSchema = z.object({
   isCardPayment: z.boolean(),
   targetCardId: z.string().optional(),
   targetAccountId: z.string().optional(),
+  exchangeRate: z.number().positive('La tasa debe ser mayor a 0').optional(),
 })
 
 type TransactionFormData = z.infer<typeof transactionSchema>
@@ -163,6 +165,25 @@ export default function TransactionsPage() {
   const watchType = watch('type')
   const watchSourceType = watch('sourceType')
   const watchIsCardPayment = watch('isCardPayment')
+  const watchBankAccountId = watch('bankAccountId')
+  const watchTargetCardId = watch('targetCardId')
+  const watchExchangeRate = watch('exchangeRate')
+  const watchAmount = watch('amount')
+
+  // Cross-currency detection for card payments
+  const selectedAccount = accounts.find(a => a.id === watchBankAccountId)
+  const selectedCard = cards.find(c => c.id === watchTargetCardId)
+  const crossCurrencyBalance = watchIsCardPayment && selectedAccount && selectedCard
+    ? selectedCard.balances?.find((b: { currency: string }) => b.currency !== selectedAccount.currency)
+    : null
+  const isCrossCurrency = !!crossCurrencyBalance
+
+  // Auto-set currency to the card's foreign currency when cross-currency is detected
+  useEffect(() => {
+    if (isCrossCurrency && crossCurrencyBalance) {
+      setValue('currency', crossCurrencyBalance.currency)
+    }
+  }, [isCrossCurrency, crossCurrencyBalance, setValue])
 
   // Filter handlers that reset page to 1
   const handleFilterTypeChange = (value: string) => {
@@ -190,6 +211,7 @@ export default function TransactionsPage() {
       isCardPayment: false,
       targetCardId: '',
       targetAccountId: '',
+      exchangeRate: undefined,
     })
     setIsDialogOpen(true)
   }
@@ -223,6 +245,7 @@ export default function TransactionsPage() {
       isCardPayment: transaction.isCardPayment,
       targetCardId: transaction.targetCardId || '',
       targetAccountId: transaction.targetAccountId || '',
+      exchangeRate: transaction.exchangeRate ? Number(transaction.exchangeRate) : undefined,
     })
     setIsDialogOpen(true)
   }
@@ -241,6 +264,7 @@ export default function TransactionsPage() {
         isCardPayment: data.type === 'transfer' ? false : data.isCardPayment,
         targetCardId: data.isCardPayment && data.type !== 'transfer' ? data.targetCardId : undefined,
         targetAccountId: data.type === 'transfer' ? data.targetAccountId : undefined,
+        exchangeRate: data.isCardPayment && data.exchangeRate ? data.exchangeRate : undefined,
       }
 
       if (editingTransaction) {
@@ -717,6 +741,35 @@ export default function TransactionsPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  )}
+
+                  {/* Tasa de cambio para pagos cross-currency */}
+                  {isCrossCurrency && crossCurrencyBalance && selectedAccount && (
+                    <div className="space-y-2 p-3 bg-muted/50 rounded-lg border">
+                      <Label htmlFor="exchangeRate">
+                        Tasa de cambio ({selectedAccount.currency} por 1 {crossCurrencyBalance.currency})
+                      </Label>
+                      <Input
+                        id="exchangeRate"
+                        type="number"
+                        step="0.000001"
+                        min="0"
+                        placeholder="Ej: 59.50"
+                        {...register('exchangeRate', { valueAsNumber: true })}
+                      />
+                      {errors.exchangeRate && (
+                        <p className="text-sm text-danger">{errors.exchangeRate.message}</p>
+                      )}
+                      {watchExchangeRate && watchAmount ? (
+                        <p className="text-sm text-muted-foreground">
+                          Se debitaran{' '}
+                          <strong>
+                            {formatCurrency(watchAmount * watchExchangeRate, selectedAccount.currency)}
+                          </strong>{' '}
+                          de tu cuenta
+                        </p>
+                      ) : null}
+                    </div>
                   )}
                 </div>
               )}

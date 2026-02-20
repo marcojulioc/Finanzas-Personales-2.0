@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
         take: limit,
         include: {
           bankAccount: {
-            select: { id: true, name: true, color: true },
+            select: { id: true, name: true, color: true, currency: true },
           },
           creditCard: {
             select: { id: true, name: true, color: true },
@@ -230,10 +230,11 @@ export async function POST(request: NextRequest) {
           isCardPayment: data.isCardPayment,
           targetCardId: data.targetCardId,
           targetAccountId: data.targetAccountId,
+          exchangeRate: data.exchangeRate,
         },
         include: {
           bankAccount: {
-            select: { id: true, name: true, color: true },
+            select: { id: true, name: true, color: true, currency: true },
           },
           creditCard: {
             select: { id: true, name: true, color: true },
@@ -246,7 +247,10 @@ export async function POST(request: NextRequest) {
 
       // Actualizar balance de cuenta bancaria
       if (data.bankAccountId) {
-        const balanceChange = data.type === 'income' ? data.amount : -data.amount
+        const bankAmount = (data.isCardPayment && data.exchangeRate)
+          ? data.amount * data.exchangeRate
+          : data.amount
+        const balanceChange = data.type === 'income' ? bankAmount : -bankAmount
         await tx.bankAccount.update({
           where: { id: data.bankAccountId },
           data: {

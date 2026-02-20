@@ -17,7 +17,9 @@ interface SwipeableTransactionItemProps {
     category: string
     description: string | null
     date: string
-    bankAccount?: { id: string; name: string; color: string | null } | null
+    isCardPayment?: boolean
+    exchangeRate?: number | null
+    bankAccount?: { id: string; name: string; color: string | null; currency?: string } | null
     creditCard?: { id: string; name: string; color: string | null } | null
     targetAccount?: { id: string; name: string; color: string | null } | null
   }
@@ -191,6 +193,14 @@ export function SwipeableTransactionItem({
           {formatCurrency(
             Number(transaction.amount),
             transaction.currency
+          )}
+          {transaction.isCardPayment && transaction.exchangeRate && transaction.bankAccount?.currency && (
+            <span className="block text-xs font-normal text-muted-foreground">
+              ({formatCurrency(
+                Number(transaction.amount) * Number(transaction.exchangeRate),
+                transaction.bankAccount.currency
+              )})
+            </span>
           )}
         </span>
       </motion.div>

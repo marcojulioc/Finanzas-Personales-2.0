@@ -230,6 +230,7 @@ model Transaction {
   isCardPayment Boolean     @default(false)
   targetCardId  String?
   targetCard    CreditCard? @relation("CardPayments", fields: [targetCardId], references: [id])
+  exchangeRate  Decimal?    @db.Decimal(12, 6)
 
   // Para transferencias entre cuentas
   targetAccountId String?

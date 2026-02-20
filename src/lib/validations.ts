@@ -117,6 +117,7 @@ export const transactionSchema = z.object({
   isCardPayment: z.boolean().default(false),
   targetCardId: z.string().cuid().optional(),
   targetAccountId: z.string().cuid().optional(),
+  exchangeRate: z.number().positive('La tasa de cambio debe ser mayor a 0').optional(),
 })
 
 // Presupuestos
