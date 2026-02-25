@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const search = searchParams.get('search')
+    const currency = searchParams.get('currency')
 
     // Construir filtros
     const where: Record<string, unknown> = {
@@ -41,6 +42,10 @@ export async function GET(request: NextRequest) {
 
     if (creditCardId) {
       where.creditCardId = creditCardId
+    }
+
+    if (currency) {
+      where.currency = currency
     }
 
     if (startDate || endDate) {

@@ -111,6 +111,7 @@ export default function TransactionsPage() {
   const [page, setPage] = useState(1)
   const [filterType, setFilterType] = useState<string>('all')
   const [filterCategory, setFilterCategory] = useState<string>('all')
+  const [filterCurrency, setFilterCurrency] = useState<string>('all')
 
   // Dialog states - open automatically if ?new=true
   const [isDialogOpen, setIsDialogOpen] = useState(shouldOpenNewForm)
@@ -123,6 +124,7 @@ export default function TransactionsPage() {
     page,
     type: filterType,
     category: filterCategory,
+    currency: filterCurrency,
     bankAccountId: urlBankAccountId || undefined,
     creditCardId: urlCreditCardId || undefined,
   })
@@ -193,6 +195,11 @@ export default function TransactionsPage() {
 
   const handleFilterCategoryChange = (value: string) => {
     setFilterCategory(value)
+    setPage(1)
+  }
+
+  const handleFilterCurrencyChange = (value: string) => {
+    setFilterCurrency(value)
     setPage(1)
   }
 
@@ -406,6 +413,19 @@ export default function TransactionsPage() {
                 {userCategories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.name}>
                     {cat.icon} {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterCurrency} onValueChange={handleFilterCurrencyChange}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Moneda" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {currencyOptions.map((currency) => (
+                  <SelectItem key={currency.code} value={currency.code}>
+                    {currency.flag} {currency.code}
                   </SelectItem>
                 ))}
               </SelectContent>

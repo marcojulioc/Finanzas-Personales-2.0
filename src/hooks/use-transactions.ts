@@ -35,6 +35,7 @@ interface UseTransactionsParams {
   category?: string
   bankAccountId?: string
   creditCardId?: string
+  currency?: string
   startDate?: string
   endDate?: string
   search?: string
@@ -48,6 +49,7 @@ export function useTransactions(params: UseTransactionsParams = {}) {
     category,
     bankAccountId,
     creditCardId,
+    currency,
     startDate,
     endDate,
     search,
@@ -61,6 +63,7 @@ export function useTransactions(params: UseTransactionsParams = {}) {
   if (category && category !== 'all') searchParams.append('category', category)
   if (bankAccountId) searchParams.append('bankAccountId', bankAccountId)
   if (creditCardId) searchParams.append('creditCardId', creditCardId)
+  if (currency && currency !== 'all') searchParams.append('currency', currency)
   if (startDate) searchParams.append('startDate', startDate)
   if (endDate) searchParams.append('endDate', endDate)
   if (search) searchParams.append('search', search)
