@@ -26,11 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, TrendingUp, TrendingDown, Wallet, Calendar, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { Loader2, TrendingUp, TrendingDown, Wallet, Calendar, ArrowUpRight, ArrowDownRight, Download } from 'lucide-react'
 import { formatCurrency, parseLocalDate } from '@/lib/format-utils'
 import { getCategoryById } from '@/lib/categories'
 import { useReports } from '@/hooks/use-reports'
 import { NetWorthSection } from '@/components/net-worth-section'
+import { ExportReportDialog } from '@/components/export-report-dialog'
 
 const PERIOD_OPTIONS = [
   { value: 'month', label: 'Este mes' },
@@ -41,6 +42,7 @@ const PERIOD_OPTIONS = [
 
 export default function ReportsPage() {
   const [period, setPeriod] = useState('6months')
+  const [exportOpen, setExportOpen] = useState(false)
   const { data, isLoading, mutate } = useReports(period)
 
   if (isLoading) {
@@ -70,18 +72,24 @@ export default function ReportsPage() {
           <h2 className="text-3xl font-bold tracking-tight">Reportes</h2>
           <p className="text-muted-foreground">Visualiza tus finanzas de un vistazo</p>
         </div>
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Seleccionar período" />
-          </SelectTrigger>
-          <SelectContent>
-            {PERIOD_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Seleccionar período" />
+            </SelectTrigger>
+            <SelectContent>
+              {PERIOD_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={() => setExportOpen(true)}>
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Exportar</span>
+          </Button>
+        </div>
       </div>
 
       <Separator />
@@ -168,6 +176,13 @@ export default function ReportsPage() {
           <SpendingCalendarHeatmap data={data.dailySpending} />
         </CardContent>
       </Card>
+
+      {/* Export Dialog */}
+      <ExportReportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        activePeriod={period}
+      />
     </div>
   )
 }

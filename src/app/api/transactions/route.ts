@@ -13,7 +13,9 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const limitParam = searchParams.get('limit')
+    const fetchAll = limitParam === 'all'
+    const limit = fetchAll ? 0 : parseInt(limitParam || '20')
     const type = searchParams.get('type') as 'income' | 'expense' | 'transfer' | null
     const category = searchParams.get('category')
     const bankAccountId = searchParams.get('bankAccountId')
@@ -69,8 +71,7 @@ export async function GET(request: NextRequest) {
       db.transaction.findMany({
         where,
         orderBy: { date: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
+        ...(fetchAll ? {} : { skip: (page - 1) * limit, take: limit }),
         include: {
           bankAccount: {
             select: { id: true, name: true, color: true, currency: true },
