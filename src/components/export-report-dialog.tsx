@@ -149,15 +149,16 @@ export function ExportReportDialog({ open, onOpenChange, activePeriod }: ExportR
       }
 
       const result = await response.json()
-      const transactions = result.data
+      // Exclude transfers — they are internal movements, not income/expenses
+      const transactions = (result.data || []).filter((t: { type: string }) => t.type !== 'transfer')
 
-      if (!transactions || transactions.length === 0) {
+      if (transactions.length === 0) {
         toast.error('No hay transacciones en el periodo seleccionado')
         setIsExporting(false)
         return
       }
 
-      // Calculate summary from transactions (excluding transfers)
+      // Calculate summary from transactions
       const summary = transactions.reduce(
         (acc: { totalIncome: number; totalExpenses: number; netBalance: number; transactionCount: number }, t: { type: string; amount: string | number }) => {
           const amount = typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount
