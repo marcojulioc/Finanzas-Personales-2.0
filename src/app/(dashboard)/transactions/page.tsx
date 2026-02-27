@@ -80,6 +80,9 @@ interface Transaction {
   targetAccount: { id: string; name: string; color: string | null } | null
 }
 
+const TAX_RATE = 0.0015 // 0.15% IDE tax
+const TAX_REF_PREFIX = 'Impuesto IDE (0.15%) | ref:'
+
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense', 'transfer']),
   amount: z.number().positive('El monto debe ser mayor a 0'),
@@ -94,6 +97,7 @@ const transactionSchema = z.object({
   targetCardId: z.string().optional(),
   targetAccountId: z.string().optional(),
   exchangeRate: z.number().positive('La tasa debe ser mayor a 0').optional(),
+  includeTax: z.boolean(),
 })
 
 type TransactionFormData = z.infer<typeof transactionSchema>
@@ -160,6 +164,7 @@ export default function TransactionsPage() {
       currency: primaryCurrency || 'USD',
       sourceType: 'account',
       isCardPayment: false,
+      includeTax: false,
       date: new Date().toISOString().split('T')[0],
     },
   })
@@ -167,10 +172,15 @@ export default function TransactionsPage() {
   const watchType = watch('type')
   const watchSourceType = watch('sourceType')
   const watchIsCardPayment = watch('isCardPayment')
+  const watchIncludeTax = watch('includeTax')
   const watchBankAccountId = watch('bankAccountId')
   const watchTargetCardId = watch('targetCardId')
   const watchExchangeRate = watch('exchangeRate')
   const watchAmount = watch('amount')
+
+  // Tax calculation
+  const taxAmount = watchAmount ? Math.round(watchAmount * TAX_RATE * 100) / 100 : 0
+  const showTaxOption = watchType === 'expense' && (watchSourceType === 'account' || watchSourceType === 'card')
 
   // Cross-currency detection for card payments
   const selectedAccount = accounts.find(a => a.id === watchBankAccountId)
@@ -216,6 +226,7 @@ export default function TransactionsPage() {
       bankAccountId: accounts[0]?.id || '',
       creditCardId: '',
       isCardPayment: false,
+      includeTax: false,
       targetCardId: '',
       targetAccountId: '',
       exchangeRate: undefined,
@@ -231,13 +242,16 @@ export default function TransactionsPage() {
     }
   }
 
-  const openEditDialog = (transaction: Transaction) => {
+  const openEditDialog = async (transaction: Transaction) => {
     setEditingTransaction(transaction)
     const sourceType = transaction.bankAccountId
       ? 'account'
       : transaction.creditCardId
       ? 'card'
       : 'cash'
+
+    // Check if this transaction has a linked tax transaction
+    const linkedTaxId = await findLinkedTaxTransaction(transaction.id)
 
     reset({
       type: transaction.type,
@@ -253,8 +267,42 @@ export default function TransactionsPage() {
       targetCardId: transaction.targetCardId || '',
       targetAccountId: transaction.targetAccountId || '',
       exchangeRate: transaction.exchangeRate ? Number(transaction.exchangeRate) : undefined,
+      includeTax: !!linkedTaxId,
     })
     setIsDialogOpen(true)
+  }
+
+  // Helper to find a linked tax transaction by description ref pattern
+  const findLinkedTaxTransaction = async (parentId: string): Promise<string | null> => {
+    const refPattern = `${TAX_REF_PREFIX}${parentId}`
+    const res = await fetch(`/api/transactions?limit=1&search=${encodeURIComponent(refPattern)}`)
+    if (!res.ok) return null
+    const result = await res.json()
+    const txList = result.data || []
+    return txList.length > 0 ? txList[0].id : null
+  }
+
+  const createTaxTransaction = async (parentId: string, data: TransactionFormData, taxAmt: number) => {
+    const taxPayload = {
+      type: 'expense' as const,
+      amount: taxAmt,
+      currency: data.currency,
+      category: 'Impuestos',
+      description: `${TAX_REF_PREFIX}${parentId}`,
+      date: new Date(data.date + 'T12:00:00'),
+      bankAccountId: data.sourceType === 'account' ? data.bankAccountId : undefined,
+      creditCardId: data.sourceType === 'card' ? data.creditCardId : undefined,
+      isCardPayment: false,
+    }
+    const taxRes = await fetch('/api/transactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(taxPayload),
+    })
+    if (!taxRes.ok) {
+      const taxResult = await taxRes.json()
+      throw new Error(taxResult.error || 'Error al crear transaccion de impuesto')
+    }
   }
 
   const onSubmit = async (data: TransactionFormData) => {
@@ -274,6 +322,9 @@ export default function TransactionsPage() {
         exchangeRate: data.isCardPayment && data.exchangeRate ? data.exchangeRate : undefined,
       }
 
+      const shouldCreateTax = data.includeTax && data.type === 'expense' && (data.sourceType === 'account' || data.sourceType === 'card')
+      const currentTaxAmount = Math.round(data.amount * TAX_RATE * 100) / 100
+
       if (editingTransaction) {
         const response = await fetch(`/api/transactions/${editingTransaction.id}`, {
           method: 'PUT',
@@ -285,6 +336,35 @@ export default function TransactionsPage() {
           const result = await response.json()
           throw new Error(result.error || 'Error al actualizar')
         }
+
+        // Recalculate linked tax transaction if it exists
+        const linkedTaxId = await findLinkedTaxTransaction(editingTransaction.id)
+        if (linkedTaxId && shouldCreateTax) {
+          // Update the existing tax transaction with recalculated amount
+          const taxUpdatePayload = {
+            type: 'expense' as const,
+            amount: currentTaxAmount,
+            currency: data.currency,
+            category: 'Impuestos',
+            description: `${TAX_REF_PREFIX}${editingTransaction.id}`,
+            date: new Date(data.date + 'T12:00:00'),
+            bankAccountId: data.sourceType === 'account' ? data.bankAccountId : undefined,
+            creditCardId: data.sourceType === 'card' ? data.creditCardId : undefined,
+            isCardPayment: false,
+          }
+          await fetch(`/api/transactions/${linkedTaxId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(taxUpdatePayload),
+          })
+        } else if (linkedTaxId && !shouldCreateTax) {
+          // Remove tax transaction if user unchecked the option
+          await fetch(`/api/transactions/${linkedTaxId}`, { method: 'DELETE' })
+        } else if (!linkedTaxId && shouldCreateTax) {
+          // Create new tax transaction
+          await createTaxTransaction(editingTransaction.id, data, currentTaxAmount)
+        }
+
         toast.success('Transaccion actualizada correctamente')
       } else {
         const response = await fetch('/api/transactions', {
@@ -293,11 +373,24 @@ export default function TransactionsPage() {
           body: JSON.stringify(payload),
         })
 
+        const result = await response.json()
         if (!response.ok) {
-          const result = await response.json()
           throw new Error(result.error || 'Error al crear')
         }
-        toast.success('Transaccion registrada correctamente')
+
+        // Create linked tax transaction
+        if (shouldCreateTax && currentTaxAmount > 0) {
+          const createdId = result.data?.id
+          if (createdId) {
+            await createTaxTransaction(createdId, data, currentTaxAmount)
+          }
+        }
+
+        toast.success(
+          shouldCreateTax
+            ? `Transaccion e impuesto IDE (${formatCurrency(currentTaxAmount, data.currency)}) registrados`
+            : 'Transaccion registrada correctamente'
+        )
       }
 
       handleDialogClose(false)
@@ -312,6 +405,12 @@ export default function TransactionsPage() {
     if (!deletingTransactionId) return
 
     try {
+      // Also delete linked tax transaction if it exists
+      const linkedTaxId = await findLinkedTaxTransaction(deletingTransactionId)
+      if (linkedTaxId) {
+        await fetch(`/api/transactions/${linkedTaxId}`, { method: 'DELETE' })
+      }
+
       const response = await fetch(`/api/transactions/${deletingTransactionId}`, {
         method: 'DELETE',
       })
@@ -321,7 +420,7 @@ export default function TransactionsPage() {
         throw new Error(result.error || 'Error al eliminar')
       }
 
-      toast.success('Transaccion eliminada correctamente')
+      toast.success(linkedTaxId ? 'Transaccion e impuesto eliminados' : 'Transaccion eliminada correctamente')
       setIsDeleteDialogOpen(false)
       setDeletingTransactionId(null)
       mutate()
@@ -702,6 +801,30 @@ export default function TransactionsPage() {
                 </Select>
               </div>
             </div>
+
+            {/* Impuesto bancario IDE */}
+            {showTaxOption && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="includeTax"
+                    {...register('includeTax')}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="includeTax" className="cursor-pointer">
+                    Incluir impuesto IDE (0.15%)
+                  </Label>
+                </div>
+                {watchIncludeTax && taxAmount > 0 && (
+                  <p className="text-sm text-muted-foreground pl-6">
+                    Se creara un cargo adicional de{' '}
+                    <strong>{formatCurrency(taxAmount, watch('currency'))}</strong>{' '}
+                    por impuesto bancario
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Categoria (oculta para transferencias) */}
             {watchType !== 'transfer' && (
