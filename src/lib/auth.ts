@@ -22,38 +22,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        console.log('=== LOGIN ATTEMPT ===')
-        console.log('Credentials received:', { email: credentials?.email, hasPassword: !!credentials?.password })
-
         const validated = loginSchema.safeParse(credentials)
 
         if (!validated.success) {
-          console.log('Validation failed:', validated.error.flatten())
           return null
         }
 
         const { email, password } = validated.data
-        console.log('Validation passed, looking for user:', email)
 
         const user = await db.user.findUnique({
           where: { email },
         })
 
         if (!user || !user.password) {
-          console.log('User not found or no password')
           return null
         }
-
-        console.log('User found:', user.id)
 
         const passwordMatch = await bcrypt.compare(password, user.password)
 
         if (!passwordMatch) {
-          console.log('Password mismatch')
           return null
         }
 
-        console.log('Login successful!')
         return {
           id: user.id,
           email: user.email,
@@ -70,12 +60,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id
         token.onboardingCompleted = (user as any).onboardingCompleted ?? false
-        console.log('JWT created for user:', user.id, 'onboarding:', token.onboardingCompleted)
       }
 
       // Si se está actualizando la sesión explícitamente
       if (trigger === 'update' && session?.onboardingCompleted !== undefined) {
-        console.log('JWT Update Triggered:', session.onboardingCompleted)
         token.onboardingCompleted = session.onboardingCompleted
       }
 
