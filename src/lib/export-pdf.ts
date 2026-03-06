@@ -20,6 +20,13 @@ interface ExportSummary {
   transactionCount: number
 }
 
+interface CategoryBreakdown {
+  category: string
+  amount: number
+  count: number
+  percentage: number
+}
+
 const TYPE_LABELS: Record<string, string> = {
   income: 'Ingreso',
   expense: 'Gasto',
@@ -48,6 +55,7 @@ function getAccountName(t: ExportTransaction): string {
 export function generatePDF(
   transactions: ExportTransaction[],
   summary: ExportSummary,
+  categoryBreakdown: { expenses: CategoryBreakdown[]; income: CategoryBreakdown[] },
   periodLabel: string,
   fileName: string
 ) {
@@ -103,14 +111,117 @@ export function generatePDF(
     doc.text(item.value, x + 4, summaryStartY + 7)
   })
 
-  // Transactions table
+  // Category consolidation section
+  let currentY = summaryStartY + 14
+
   doc.setDrawColor(200, 200, 200)
-  doc.line(14, summaryStartY + 14, pageWidth - 14, summaryStartY + 14)
+  doc.setLineWidth(0.5)
+  doc.line(14, currentY, pageWidth - 14, currentY)
 
   doc.setFontSize(13)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(0, 0, 0)
-  doc.text('Detalle de Transacciones', 14, summaryStartY + 22)
+  doc.text('Consolidado por Categoria', 14, currentY + 8)
+
+  // Expenses by category table
+  if (categoryBreakdown.expenses.length > 0) {
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(196, 69, 60) // #c4453c
+    doc.text('Gastos por Categoria', 14, currentY + 16)
+
+    const expenseRows = categoryBreakdown.expenses.map((c) => [
+      c.category,
+      formatAmount(c.amount),
+      `${c.percentage.toFixed(1)}%`,
+      c.count.toString(),
+    ])
+    expenseRows.push([
+      'TOTAL',
+      formatAmount(summary.totalExpenses),
+      '100%',
+      categoryBreakdown.expenses.reduce((sum, c) => sum + c.count, 0).toString(),
+    ])
+
+    autoTable(doc, {
+      startY: currentY + 19,
+      head: [['Categoria', 'Monto', '% del Total', 'Transacciones']],
+      body: expenseRows,
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      headStyles: { fillColor: [196, 69, 60], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: {
+        1: { halign: 'right' },
+        2: { halign: 'center' },
+        3: { halign: 'center' },
+      },
+      margin: { left: 14, right: 14 },
+      // Bold total row
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.row.index === expenseRows.length - 1) {
+          data.cell.styles.fontStyle = 'bold'
+          data.cell.styles.fillColor = [230, 230, 230]
+        }
+      },
+    })
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    currentY = (doc as any).lastAutoTable.finalY + 6
+  }
+
+  // Income by category table
+  if (categoryBreakdown.income.length > 0) {
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(120, 140, 93) // #788c5d
+    doc.text('Ingresos por Categoria', 14, currentY + 2)
+
+    const incomeRows = categoryBreakdown.income.map((c) => [
+      c.category,
+      formatAmount(c.amount),
+      `${c.percentage.toFixed(1)}%`,
+      c.count.toString(),
+    ])
+    incomeRows.push([
+      'TOTAL',
+      formatAmount(summary.totalIncome),
+      '100%',
+      categoryBreakdown.income.reduce((sum, c) => sum + c.count, 0).toString(),
+    ])
+
+    autoTable(doc, {
+      startY: currentY + 5,
+      head: [['Categoria', 'Monto', '% del Total', 'Transacciones']],
+      body: incomeRows,
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      headStyles: { fillColor: [120, 140, 93], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: {
+        1: { halign: 'right' },
+        2: { halign: 'center' },
+        3: { halign: 'center' },
+      },
+      margin: { left: 14, right: 14 },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.row.index === incomeRows.length - 1) {
+          data.cell.styles.fontStyle = 'bold'
+          data.cell.styles.fillColor = [230, 230, 230]
+        }
+      },
+    })
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    currentY = (doc as any).lastAutoTable.finalY + 6
+  }
+
+  // Transactions table
+  doc.setDrawColor(200, 200, 200)
+  doc.line(14, currentY, pageWidth - 14, currentY)
+
+  doc.setFontSize(13)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text('Detalle de Transacciones', 14, currentY + 8)
 
   const tableData = transactions.map((t) => [
     formatDateForReport(t.date),
@@ -123,7 +234,7 @@ export function generatePDF(
   ])
 
   autoTable(doc, {
-    startY: summaryStartY + 26,
+    startY: currentY + 12,
     head: [['Fecha', 'Tipo', 'Categoria', 'Descripcion', 'Cuenta', 'Moneda', 'Monto']],
     body: tableData,
     styles: {

@@ -19,6 +19,13 @@ interface ExportSummary {
   transactionCount: number
 }
 
+interface CategoryBreakdown {
+  category: string
+  amount: number
+  count: number
+  percentage: number
+}
+
 const TYPE_LABELS: Record<string, string> = {
   income: 'Ingreso',
   expense: 'Gasto',
@@ -42,6 +49,7 @@ function getAccountName(t: ExportTransaction): string {
 export function generateExcel(
   transactions: ExportTransaction[],
   summary: ExportSummary,
+  categoryBreakdown: { expenses: CategoryBreakdown[]; income: CategoryBreakdown[] },
   periodLabel: string,
   fileName: string
 ) {
@@ -66,6 +74,52 @@ export function generateExcel(
   summarySheet['!cols'] = [{ wch: 25 }, { wch: 20 }]
 
   XLSX.utils.book_append_sheet(wb, summarySheet, 'Resumen')
+
+  // -- Consolidado (Category Breakdown) sheet --
+  const consolidadoData: (string | number)[][] = [
+    ['Consolidado por Categoria'],
+    [periodLabel],
+    [],
+  ]
+
+  // Expenses section
+  if (categoryBreakdown.expenses.length > 0) {
+    consolidadoData.push(['Gastos por Categoria'])
+    consolidadoData.push(['Categoria', 'Monto', '% del Total', 'Transacciones'])
+    const expStartRow = consolidadoData.length + 1 // 1-indexed for formulas
+    categoryBreakdown.expenses.forEach((c) => {
+      consolidadoData.push([c.category, c.amount, parseFloat(c.percentage.toFixed(1)), c.count])
+    })
+    const expEndRow = consolidadoData.length
+    consolidadoData.push([
+      'TOTAL',
+      { f: `SUM(B${expStartRow}:B${expEndRow})` } as unknown as number,
+      100,
+      { f: `SUM(D${expStartRow}:D${expEndRow})` } as unknown as number,
+    ])
+    consolidadoData.push([])
+  }
+
+  // Income section
+  if (categoryBreakdown.income.length > 0) {
+    consolidadoData.push(['Ingresos por Categoria'])
+    consolidadoData.push(['Categoria', 'Monto', '% del Total', 'Transacciones'])
+    const incStartRow = consolidadoData.length + 1
+    categoryBreakdown.income.forEach((c) => {
+      consolidadoData.push([c.category, c.amount, parseFloat(c.percentage.toFixed(1)), c.count])
+    })
+    const incEndRow = consolidadoData.length
+    consolidadoData.push([
+      'TOTAL',
+      { f: `SUM(B${incStartRow}:B${incEndRow})` } as unknown as number,
+      100,
+      { f: `SUM(D${incStartRow}:D${incEndRow})` } as unknown as number,
+    ])
+  }
+
+  const consolidadoSheet = XLSX.utils.aoa_to_sheet(consolidadoData)
+  consolidadoSheet['!cols'] = [{ wch: 22 }, { wch: 18 }, { wch: 12 }, { wch: 15 }]
+  XLSX.utils.book_append_sheet(wb, consolidadoSheet, 'Consolidado')
 
   // -- Transactions sheet --
   const headers = ['Fecha', 'Tipo', 'Categoria', 'Descripcion', 'Cuenta', 'Moneda', 'Monto']

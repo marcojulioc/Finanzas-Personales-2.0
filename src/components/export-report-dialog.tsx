@@ -174,13 +174,42 @@ export function ExportReportDialog({ open, onOpenChange, activePeriod }: ExportR
       )
       summary.netBalance = summary.totalIncome - summary.totalExpenses
 
+      // Compute category breakdown
+      const expensesByCategory: Record<string, { amount: number; count: number }> = {}
+      const incomeByCategory: Record<string, { amount: number; count: number }> = {}
+
+      for (const t of transactions as { type: string; category: string; amount: string | number }[]) {
+        const amount = typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount
+        const map = t.type === 'income' ? incomeByCategory : expensesByCategory
+        if (!map[t.category]) {
+          map[t.category] = { amount: 0, count: 0 }
+        }
+        map[t.category]!.amount += amount
+        map[t.category]!.count++
+      }
+
+      const buildBreakdown = (map: Record<string, { amount: number; count: number }>, total: number) =>
+        Object.entries(map)
+          .map(([category, data]) => ({
+            category,
+            amount: data.amount,
+            count: data.count,
+            percentage: total > 0 ? (data.amount / total) * 100 : 0,
+          }))
+          .sort((a, b) => b.amount - a.amount)
+
+      const categoryBreakdown = {
+        expenses: buildBreakdown(expensesByCategory, summary.totalExpenses),
+        income: buildBreakdown(incomeByCategory, summary.totalIncome),
+      }
+
       // Dynamic import to keep bundle size small
       if (format === 'pdf') {
         const { generatePDF } = await import('@/lib/export-pdf')
-        generatePDF(transactions, summary, periodLabel, fileName)
+        generatePDF(transactions, summary, categoryBreakdown, periodLabel, fileName)
       } else {
         const { generateExcel } = await import('@/lib/export-excel')
-        generateExcel(transactions, summary, periodLabel, fileName)
+        generateExcel(transactions, summary, categoryBreakdown, periodLabel, fileName)
       }
 
       toast.success(`Reporte ${format === 'pdf' ? 'PDF' : 'Excel'} descargado`)
