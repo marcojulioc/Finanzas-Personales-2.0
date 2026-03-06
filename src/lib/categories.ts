@@ -16,22 +16,22 @@ export interface Category {
 // ============================================
 
 export const EXPENSE_CATEGORIES: Category[] = [
-  { id: 'food', name: 'Alimentacion', icon: '🍔', color: '#f97316', type: 'expense' },
-  { id: 'transport', name: 'Transporte', icon: '🚗', color: '#3b82f6', type: 'expense' },
-  { id: 'housing', name: 'Vivienda', icon: '🏠', color: '#8b5cf6', type: 'expense' },
-  { id: 'health', name: 'Salud', icon: '💊', color: '#ef4444', type: 'expense' },
-  { id: 'entertainment', name: 'Entretenimiento', icon: '🎮', color: '#ec4899', type: 'expense' },
-  { id: 'shopping', name: 'Compras', icon: '🛍️', color: '#14b8a6', type: 'expense' },
-  { id: 'services', name: 'Servicios', icon: '💳', color: '#6366f1', type: 'expense' },
-  { id: 'card_payment', name: 'Pago Tarjeta', icon: '💰', color: '#10b981', type: 'expense' },
-  { id: 'other_expense', name: 'Otros', icon: '❓', color: '#6b7280', type: 'expense' },
+  { id: 'food', name: 'Alimentacion', icon: '🍔', color: '#d97757', type: 'expense' },
+  { id: 'transport', name: 'Transporte', icon: '🚗', color: '#6a9bcc', type: 'expense' },
+  { id: 'housing', name: 'Vivienda', icon: '🏠', color: '#8b7d6b', type: 'expense' },
+  { id: 'health', name: 'Salud', icon: '💊', color: '#c4453c', type: 'expense' },
+  { id: 'entertainment', name: 'Entretenimiento', icon: '🎮', color: '#c9923e', type: 'expense' },
+  { id: 'shopping', name: 'Compras', icon: '🛍️', color: '#a67c6b', type: 'expense' },
+  { id: 'services', name: 'Servicios', icon: '💳', color: '#5a87b5', type: 'expense' },
+  { id: 'card_payment', name: 'Pago Tarjeta', icon: '💰', color: '#788c5d', type: 'expense' },
+  { id: 'other_expense', name: 'Otros', icon: '❓', color: '#b0aea5', type: 'expense' },
 ]
 
 export const INCOME_CATEGORIES: Category[] = [
-  { id: 'salary', name: 'Salario', icon: '💼', color: '#10b981', type: 'income' },
-  { id: 'bonus', name: 'Bono', icon: '💰', color: '#22c55e', type: 'income' },
-  { id: 'gift', name: 'Regalo', icon: '🎁', color: '#84cc16', type: 'income' },
-  { id: 'other_income', name: 'Otros ingresos', icon: '💸', color: '#a3e635', type: 'income' },
+  { id: 'salary', name: 'Salario', icon: '💼', color: '#788c5d', type: 'income' },
+  { id: 'bonus', name: 'Bono', icon: '💰', color: '#9aad7e', type: 'income' },
+  { id: 'gift', name: 'Regalo', icon: '🎁', color: '#6a9bcc', type: 'income' },
+  { id: 'other_income', name: 'Otros ingresos', icon: '💸', color: '#c9923e', type: 'income' },
 ]
 
 export const ALL_CATEGORIES = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES]

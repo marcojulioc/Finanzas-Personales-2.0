@@ -8,22 +8,22 @@ export interface DefaultCategory {
 }
 
 export const DEFAULT_EXPENSE_CATEGORIES: DefaultCategory[] = [
-  { name: 'Alimentacion', icon: '🍔', color: '#f97316', type: 'expense' },
-  { name: 'Transporte', icon: '🚗', color: '#3b82f6', type: 'expense' },
-  { name: 'Vivienda', icon: '🏠', color: '#8b5cf6', type: 'expense' },
-  { name: 'Salud', icon: '💊', color: '#ef4444', type: 'expense' },
-  { name: 'Entretenimiento', icon: '🎮', color: '#ec4899', type: 'expense' },
-  { name: 'Compras', icon: '🛍️', color: '#14b8a6', type: 'expense' },
-  { name: 'Servicios', icon: '💳', color: '#6366f1', type: 'expense' },
-  { name: 'Pago Tarjeta', icon: '💰', color: '#10b981', type: 'expense' },
-  { name: 'Otros', icon: '❓', color: '#6b7280', type: 'expense' },
+  { name: 'Alimentacion', icon: '🍔', color: '#d97757', type: 'expense' },
+  { name: 'Transporte', icon: '🚗', color: '#6a9bcc', type: 'expense' },
+  { name: 'Vivienda', icon: '🏠', color: '#8b7d6b', type: 'expense' },
+  { name: 'Salud', icon: '💊', color: '#c4453c', type: 'expense' },
+  { name: 'Entretenimiento', icon: '🎮', color: '#c9923e', type: 'expense' },
+  { name: 'Compras', icon: '🛍️', color: '#a67c6b', type: 'expense' },
+  { name: 'Servicios', icon: '💳', color: '#5a87b5', type: 'expense' },
+  { name: 'Pago Tarjeta', icon: '💰', color: '#788c5d', type: 'expense' },
+  { name: 'Otros', icon: '❓', color: '#b0aea5', type: 'expense' },
 ]
 
 export const DEFAULT_INCOME_CATEGORIES: DefaultCategory[] = [
-  { name: 'Salario', icon: '💼', color: '#10b981', type: 'income' },
-  { name: 'Bono', icon: '💰', color: '#22c55e', type: 'income' },
-  { name: 'Regalo', icon: '🎁', color: '#84cc16', type: 'income' },
-  { name: 'Otros ingresos', icon: '💸', color: '#a3e635', type: 'income' },
+  { name: 'Salario', icon: '💼', color: '#788c5d', type: 'income' },
+  { name: 'Bono', icon: '💰', color: '#9aad7e', type: 'income' },
+  { name: 'Regalo', icon: '🎁', color: '#6a9bcc', type: 'income' },
+  { name: 'Otros ingresos', icon: '💸', color: '#c9923e', type: 'income' },
 ]
 
 export const DEFAULT_CATEGORIES: DefaultCategory[] = [

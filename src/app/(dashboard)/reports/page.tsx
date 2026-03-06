@@ -355,13 +355,13 @@ function IncomeExpenseBarChart({
           <Bar
             dataKey="income"
             name="Ingresos"
-            fill="#10b981"
+            fill="#788c5d"
             radius={[4, 4, 0, 0]}
           />
           <Bar
             dataKey="expenses"
             name="Gastos"
-            fill="#ef4444"
+            fill="#c4453c"
             radius={[4, 4, 0, 0]}
           />
         </LazyBarChart>
@@ -406,12 +406,12 @@ function BalanceAreaChart({
             <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
               <stop
                 offset="5%"
-                stopColor={isPositive ? '#10b981' : '#ef4444'}
+                stopColor={isPositive ? '#788c5d' : '#c4453c'}
                 stopOpacity={0.3}
               />
               <stop
                 offset="95%"
-                stopColor={isPositive ? '#10b981' : '#ef4444'}
+                stopColor={isPositive ? '#788c5d' : '#c4453c'}
                 stopOpacity={0}
               />
             </linearGradient>
@@ -442,7 +442,7 @@ function BalanceAreaChart({
             type="monotone"
             dataKey="balance"
             name="Balance"
-            stroke={isPositive ? '#10b981' : '#ef4444'}
+            stroke={isPositive ? '#788c5d' : '#c4453c'}
             strokeWidth={2}
             fill="url(#balanceGradient)"
           />

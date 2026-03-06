@@ -4,8 +4,8 @@
   "description": "Aplicación para registrar y visualizar tus transacciones financieras diarias",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0d9488",
+  "background_color": "#141413",
+  "theme_color": "#d97757",
   "orientation": "portrait-primary",
   "scope": "/",
   "icons": [

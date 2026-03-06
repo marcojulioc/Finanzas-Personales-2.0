@@ -139,12 +139,12 @@ export const COMMON_BANKS = [
 
 // Colores disponibles para cuentas/tarjetas
 export const ACCOUNT_COLORS = [
-  '#0d9488', // teal
-  '#f97316', // orange
-  '#8b5cf6', // purple
-  '#ec4899', // pink
-  '#3b82f6', // blue
-  '#10b981', // emerald
-  '#f59e0b', // amber
-  '#6366f1', // indigo
+  '#d97757', // claude orange
+  '#6a9bcc', // claude blue
+  '#788c5d', // claude green
+  '#c9923e', // warm amber
+  '#a67c6b', // warm brown
+  '#8b7d6b', // taupe
+  '#b0aea5', // mid gray
+  '#c4613e', // deep terracotta
 ] as const

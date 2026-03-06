@@ -25,7 +25,7 @@ export function CardAlerts({ alerts }: CardAlertsProps) {
             <AlertTitle className="flex items-center gap-2">
               <span
                 className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: alert.cardColor || '#f97316' }}
+                style={{ backgroundColor: alert.cardColor || '#d97757' }}
               />
               {alert.cardName}
             </AlertTitle>
