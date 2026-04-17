@@ -14,8 +14,7 @@ export interface BankAccount {
 export interface CreditCard {
   id: string
   name: string
-  currency: string
-  balances?: Array<{ currency: string; balance: string }>
+  balances: Array<{ currency: string; balance: string }>
 }
 
 export interface Category {

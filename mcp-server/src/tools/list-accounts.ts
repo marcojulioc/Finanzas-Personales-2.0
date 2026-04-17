@@ -30,8 +30,7 @@ export const listAccountsTool = {
       creditCards: cards.map((c) => ({
         id: c.id,
         name: c.name,
-        currency: c.currency,
-        debt: c.balances?.[0]?.balance ?? '0.00',
+        balances: c.balances.map((b) => ({ currency: b.currency, debt: b.balance })),
       })),
       categories,
     }

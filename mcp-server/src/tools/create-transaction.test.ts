@@ -6,7 +6,7 @@ const mockAccounts = [
   { id: 'a2', name: 'BHD Dólares', currency: 'USD', balance: '500.00' },
 ]
 const mockCards = [
-  { id: 'c1', name: 'Visa Popular', currency: 'DOP', balances: [] },
+  { id: 'c1', name: 'Visa Popular', balances: [] },
 ]
 
 function mockClient() {
