@@ -1,4 +1,5 @@
 import http from 'node:http'
+import crypto from 'node:crypto'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { ApiClient } from './api-client.js'
 import { buildMcpServer } from './server.js'
@@ -39,7 +40,13 @@ const server = http.createServer(async (req, res) => {
   if (url === '/mcp') {
     const authHeader = (req.headers['authorization'] as string | undefined) ?? ''
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
-    if (token !== MCP_PUBLIC_KEY) {
+    const expected = MCP_PUBLIC_KEY!
+    const tokenBuf = Buffer.from(token)
+    const expectedBuf = Buffer.from(expected)
+    const valid =
+      tokenBuf.length === expectedBuf.length &&
+      crypto.timingSafeEqual(tokenBuf, expectedBuf)
+    if (!valid) {
       res.writeHead(401, { 'content-type': 'application/json' })
       res.end(JSON.stringify({ error: 'unauthorized' }))
       return
