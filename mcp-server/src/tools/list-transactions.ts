@@ -3,7 +3,6 @@ import type { ToolContext, Transaction } from '../types.js'
 
 const inputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(10),
-  accountName: z.string().optional(),
   days: z.number().int().min(1).max(365).optional(),
 })
 
