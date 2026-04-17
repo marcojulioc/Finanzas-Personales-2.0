@@ -38,6 +38,33 @@ npx vitest run tests/unit/lib/validations.test.ts
 - **Vitest** for unit/integration tests, **Playwright** for E2E
 - **PWA** enabled with @ducanh2912/next-pwa
 
+## MCP Server Integration
+
+A second Railway service in `mcp-server/` exposes the app's API as MCP tools
+for Claude (voice/text control from the Claude mobile app). Auth uses the
+`X-API-Key` header validated by `authenticateRequest()` in
+`src/lib/auth-api-key.ts` — endpoints that support MCP access use
+`authenticateRequest(request)` instead of calling `auth()` directly, falling
+back to NextAuth sessions when no API key is present.
+
+**Endpoints that accept MCP auth:**
+- `GET /api/accounts`
+- `GET /api/cards`
+- `GET /api/categories`
+- `GET /api/transactions`
+- `POST /api/transactions`
+
+**MCP-side env vars** (in the MCP service on Railway):
+- `MCP_PUBLIC_KEY` — Bearer token the Claude app sends
+- `INTERNAL_API_KEY` — X-API-Key the MCP server sends to the Next.js app
+- `OWNER_USER_ID` — hardcoded user ID (since single-tenant)
+- `APP_URL` — `http://<nextjs-service>.railway.internal:3000`
+
+**Matching env vars on the Next.js side:** `INTERNAL_API_KEY`, `OWNER_USER_ID`.
+
+Design: `docs/plans/2026-04-16-mcp-integration-design.md`
+Implementation plan: `docs/plans/2026-04-16-mcp-integration-plan.md`
+
 ## Architecture Overview
 
 ### Route Structure

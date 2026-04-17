@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { authenticateRequest } from '@/lib/auth-api-key'
 import { db } from '@/lib/db'
 import { z } from 'zod'
 
@@ -13,8 +14,8 @@ const categorySchema = z.object({
 // GET /api/categories - Listar categorias del usuario
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const authResult = await authenticateRequest(request)
+    if (!authResult) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
       type?: 'income' | 'expense'
       isActive?: boolean
     } = {
-      userId: session.user.id,
+      userId: authResult.userId,
     }
 
     if (type) {
