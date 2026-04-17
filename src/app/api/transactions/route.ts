@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { authenticateRequest } from '@/lib/auth-api-key'
 import { db } from '@/lib/db'
 import { transactionSchema } from '@/lib/validations'
@@ -109,8 +108,8 @@ export async function GET(request: NextRequest) {
 // POST /api/transactions - Crear transacción
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const authResult = await authenticateRequest(request)
+    if (!authResult) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
@@ -163,7 +162,7 @@ export async function POST(request: NextRequest) {
     // Verificar pertenencia de cuenta/tarjeta
     if (data.bankAccountId) {
       const account = await db.bankAccount.findFirst({
-        where: { id: data.bankAccountId, userId: session.user.id, isActive: true },
+        where: { id: data.bankAccountId, userId: authResult.userId, isActive: true },
       })
       if (!account) {
         return NextResponse.json(
@@ -175,7 +174,7 @@ export async function POST(request: NextRequest) {
 
     if (data.creditCardId) {
       const card = await db.creditCard.findFirst({
-        where: { id: data.creditCardId, userId: session.user.id, isActive: true },
+        where: { id: data.creditCardId, userId: authResult.userId, isActive: true },
       })
       if (!card) {
         return NextResponse.json(
@@ -187,7 +186,7 @@ export async function POST(request: NextRequest) {
 
     if (data.targetCardId) {
       const targetCard = await db.creditCard.findFirst({
-        where: { id: data.targetCardId, userId: session.user.id, isActive: true },
+        where: { id: data.targetCardId, userId: authResult.userId, isActive: true },
       })
       if (!targetCard) {
         return NextResponse.json(
@@ -199,7 +198,7 @@ export async function POST(request: NextRequest) {
 
     if (data.targetAccountId) {
       const targetAccount = await db.bankAccount.findFirst({
-        where: { id: data.targetAccountId, userId: session.user.id, isActive: true },
+        where: { id: data.targetAccountId, userId: authResult.userId, isActive: true },
       })
       if (!targetAccount) {
         return NextResponse.json(
@@ -209,7 +208,7 @@ export async function POST(request: NextRequest) {
       }
       // Validar misma moneda
       const sourceAccount = await db.bankAccount.findFirst({
-        where: { id: data.bankAccountId!, userId: session.user.id },
+        where: { id: data.bankAccountId!, userId: authResult.userId },
         select: { currency: true },
       })
       if (sourceAccount && targetAccount.currency !== sourceAccount.currency) {
@@ -225,7 +224,7 @@ export async function POST(request: NextRequest) {
       // Crear la transacción
       const newTransaction = await tx.transaction.create({
         data: {
-          userId: session.user.id,
+          userId: authResult.userId,
           type: data.type,
           amount: data.amount,
           currency: data.currency,
