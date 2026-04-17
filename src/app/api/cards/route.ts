@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { authenticateRequest } from '@/lib/auth-api-key'
 import { db } from '@/lib/db'
 import { creditCardSchema } from '@/lib/validations'
 
 // GET /api/cards - Listar tarjetas del usuario con sus balances
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const authResult = await authenticateRequest(request)
+    if (!authResult) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
     const cards = await db.creditCard.findMany({
-      where: { userId: session.user.id, isActive: true },
+      where: { userId: authResult.userId, isActive: true },
       include: {
         balances: {
           orderBy: { currency: 'asc' },
