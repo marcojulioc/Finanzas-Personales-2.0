@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { authenticateRequest } from '@/lib/auth-api-key'
 import { db } from '@/lib/db'
 import { bankAccountSchema } from '@/lib/validations'
 
 // GET /api/accounts - Listar cuentas del usuario
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const authResult = await authenticateRequest(request)
+    if (!authResult) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
     const accounts = await db.bankAccount.findMany({
-      where: { userId: session.user.id, isActive: true },
+      where: { userId: authResult.userId, isActive: true },
       orderBy: { createdAt: 'asc' },
     })
 
