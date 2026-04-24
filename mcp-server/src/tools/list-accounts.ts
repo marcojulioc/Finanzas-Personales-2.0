@@ -6,7 +6,9 @@ export const listAccountsTool = {
   description:
     'List all active bank accounts, credit cards, and available categories. ' +
     'Always call this first when the user references an account/card/category by name, ' +
-    'so you know their exact IDs and spellings before creating a transaction.',
+    'so you know their exact IDs and spellings before creating a transaction. ' +
+    'Names in `bankAccounts` can be passed to `accountName` and names in `creditCards` ' +
+    'can be passed to `cardName` (or `targetCardName` for card payments) in create_transaction.',
   inputSchema: z.object({}),
   handler: async (_input: unknown, ctx: ToolContext) => {
     const [accounts, cards, catsIncome, catsExpense] = await Promise.all([
