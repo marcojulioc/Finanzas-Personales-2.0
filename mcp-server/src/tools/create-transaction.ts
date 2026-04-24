@@ -32,10 +32,11 @@ export const createTransactionTool = {
     const input = inputSchema.parse(rawInput)
 
     const accounts = await ctx.api.get<BankAccount[]>('/accounts')
-    const sourceAccount = findByName(accounts, input.accountName)
-    if (!sourceAccount) {
+    const sourceMatches = findByName(accounts, input.accountName)
+    if (sourceMatches.length === 0) {
       throw new Error(`No account matching "${input.accountName}". Call list_accounts for options.`)
     }
+    const sourceAccount = sourceMatches[0]
 
     const payload: Record<string, unknown> = {
       type: input.type,
@@ -51,20 +52,20 @@ export const createTransactionTool = {
       if (!input.targetAccountName) {
         throw new Error('targetAccountName required for transfer')
       }
-      const targetAccount = findByName(accounts, input.targetAccountName)
-      if (!targetAccount) {
+      const targetMatches = findByName(accounts, input.targetAccountName)
+      if (targetMatches.length === 0) {
         throw new Error(`No target account matching "${input.targetAccountName}"`)
       }
-      payload.targetAccountId = targetAccount.id
+      payload.targetAccountId = targetMatches[0].id
     }
 
     if (input.targetCardName) {
       const cards = await ctx.api.get<CreditCard[]>('/cards')
-      const targetCard = findByName(cards, input.targetCardName)
-      if (!targetCard) {
+      const cardMatches = findByName(cards, input.targetCardName)
+      if (cardMatches.length === 0) {
         throw new Error(`No card matching "${input.targetCardName}"`)
       }
-      payload.targetCardId = targetCard.id
+      payload.targetCardId = cardMatches[0].id
       payload.isCardPayment = true
     }
 

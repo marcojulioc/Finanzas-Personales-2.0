@@ -15,10 +15,11 @@ export const getBalanceTool = {
   handler: async (input: z.infer<typeof inputSchema>, ctx: ToolContext) => {
     const parsed = inputSchema.parse(input)
     const accounts = await ctx.api.get<BankAccount[]>('/accounts')
-    const match = findByName(accounts, parsed.accountName)
-    if (!match) {
+    const matches = findByName(accounts, parsed.accountName)
+    if (matches.length === 0) {
       throw new Error(`No account matching "${parsed.accountName}". Call list_accounts to see options.`)
     }
+    const match = matches[0]
     return {
       account: match.name,
       balance: match.balance,

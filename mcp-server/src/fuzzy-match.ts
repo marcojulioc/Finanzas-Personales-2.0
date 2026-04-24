@@ -2,25 +2,26 @@ function normalize(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 }
 
-export function findByName<T extends { name: string }>(
-  items: T[],
-  query: string,
-): T | null {
-  if (!query) return null
+/**
+ * Finds items whose name matches the query (case/accent-insensitive).
+ *
+ * Returns all matches so the caller can handle 0/1/N with descriptive errors.
+ * An exact normalized match shortcuts substring matching — exact wins even when
+ * substring would match more items. If multiple items are exactly equal under
+ * normalization, all are returned.
+ *
+ * Intentionally NO token fallback and NO bidirectional inclusion: a previous
+ * implementation matched "Popular 4866" against an item "Popular 8695" via
+ * `query.includes(itemToken)`, silently routing transactions to the wrong
+ * account. The current contract requires the item's normalized name to
+ * *contain* the normalized query.
+ */
+export function findByName<T extends { name: string }>(items: T[], query: string): T[] {
+  if (!query) return []
   const nq = normalize(query)
 
-  // 1. Exact match on normalized
-  const exact = items.find((it) => normalize(it.name) === nq)
-  if (exact) return exact
+  const exact = items.filter((it) => normalize(it.name) === nq)
+  if (exact.length > 0) return exact
 
-  // 2. Substring match
-  const substring = items.find((it) => normalize(it.name).includes(nq))
-  if (substring) return substring
-
-  // 3. Any token of the item includes the query (or vice versa)
-  const token = items.find((it) => {
-    const tokens = normalize(it.name).split(/\s+/)
-    return tokens.some((t) => t.includes(nq) || nq.includes(t))
-  })
-  return token ?? null
+  return items.filter((it) => normalize(it.name).includes(nq))
 }
