@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { ApiClient } from './api-client.js'
 import { buildMcpServer } from './server.js'
-import { OAuthStore, verifyAccessToken } from './oauth/store.js'
+import { verifyAccessToken } from './oauth/store.js'
 import {
   handleAuthorizeGet,
   handleAuthorizePost,
@@ -28,9 +28,7 @@ if (!APP_URL || !INTERNAL_API_KEY || !MCP_PUBLIC_KEY || !OWNER_USER_ID) {
 
 const api = new ApiClient(APP_URL.replace(/\/$/, '') + '/api', INTERNAL_API_KEY)
 
-const oauthStore = new OAuthStore()
 const oauthDeps = {
-  store: oauthStore,
   authorizationToken: MCP_PUBLIC_KEY!,
   ownerUserId: OWNER_USER_ID!,
 }

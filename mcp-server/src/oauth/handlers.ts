@@ -1,13 +1,14 @@
 import http from 'node:http'
 import crypto from 'node:crypto'
 import {
-  OAuthStore,
   TTL,
   issueAuthCode,
   verifyAuthCode,
   issueAccessToken,
   issueRefreshToken,
   verifyRefreshToken,
+  issueClientId,
+  verifyClientId,
 } from './store.js'
 import { verifyS256 } from './pkce.js'
 
@@ -24,7 +25,6 @@ import { verifyS256 } from './pkce.js'
  */
 
 export type OAuthDeps = {
-  store: OAuthStore
   /** Static shared secret the user pastes on the consent page. */
   authorizationToken: string
   /** sub claim for access/refresh tokens (single-tenant: hardcoded user id). */
@@ -180,7 +180,7 @@ export async function handleRegister(req: http.IncomingMessage, res: http.Server
     }
   }
 
-  const client = deps.store.registerClient({
+  const client = issueClientId({
     redirect_uris,
     grant_types: arrOrDefault(body.grant_types, ['authorization_code', 'refresh_token']),
     response_types: arrOrDefault(body.response_types, ['code']),
@@ -257,13 +257,12 @@ function readAuthorizeParams(src: Record<string, string | null | undefined>): Au
 
 function validateAuthorizeParams(
   p: AuthorizeParams,
-  deps: OAuthDeps,
 ): { ok: true } | { ok: false; error: string; description: string } {
   if (p.response_type !== 'code') {
     return { ok: false, error: 'unsupported_response_type', description: 'response_type must be "code"' }
   }
   if (!p.client_id) return { ok: false, error: 'invalid_request', description: 'client_id is required' }
-  const client = deps.store.getClient(p.client_id)
+  const client = verifyClientId(p.client_id)
   if (!client) return { ok: false, error: 'invalid_client', description: 'Unknown client_id' }
   if (!p.redirect_uri) return { ok: false, error: 'invalid_request', description: 'redirect_uri is required' }
   if (!client.redirect_uris.includes(p.redirect_uri)) {
@@ -280,7 +279,7 @@ export async function handleAuthorizeGet(req: http.IncomingMessage, res: http.Se
   const url = new URL(req.url ?? '/', 'http://x')
   const params = readAuthorizeParams(Object.fromEntries(url.searchParams.entries()))
 
-  const check = validateAuthorizeParams(params, deps)
+  const check = validateAuthorizeParams(params)
   if (!check.ok) {
     return sendHtml(res, 400, renderErrorPage(check.error, check.description))
   }
@@ -293,7 +292,7 @@ export async function handleAuthorizePost(req: http.IncomingMessage, res: http.S
   const form = parseFormOrJson(raw, req.headers['content-type'] as string | undefined)
   const params = readAuthorizeParams(form)
 
-  const check = validateAuthorizeParams(params, deps)
+  const check = validateAuthorizeParams(params)
   if (!check.ok) {
     return sendHtml(res, 400, renderErrorPage(check.error, check.description))
   }

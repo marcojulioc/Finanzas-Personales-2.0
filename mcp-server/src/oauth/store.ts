@@ -206,12 +206,34 @@ export function verifyRefreshToken(token: string): RefreshTokenPayload | null {
 }
 
 // ---------------------------------------------------------------------------
-// Client registration (still in-memory in this commit)
+// Client registration (RFC 7591 DCR) — stateless: the client_id IS a JWT
 // ---------------------------------------------------------------------------
+//
+// /register issues a JWT whose payload encodes the registered client
+// metadata. /authorize and /token re-verify this JWT to prove the
+// client_id was legitimately issued by us. No server-side Map of clients
+// is kept, so registrations survive restarts.
+//
+// Public clients only (token_endpoint_auth_method = "none"). Since there
+// is no client secret to leak, embedding the metadata in the client_id
+// itself is safe — it's just a self-describing identifier we signed.
 
+export type ClientPayload = {
+  typ: 'client'
+  redirect_uris: string[]
+  grant_types: string[]
+  response_types: string[]
+  token_endpoint_auth_method: string
+  client_name?: string
+  scope?: string
+  iat: number
+  jti: string
+}
+
+/** Convenience shape matching the previous in-memory record. Echoed by /register. */
 export type ClientRecord = {
   client_id: string
-  client_id_issued_at: number // epoch seconds
+  client_id_issued_at: number // epoch seconds (= iat)
   redirect_uris: string[]
   grant_types: string[]
   response_types: string[]
@@ -220,32 +242,44 @@ export type ClientRecord = {
   scope?: string
 }
 
-export class OAuthStore {
-  private clients = new Map<string, ClientRecord>()
-
-  registerClient(input: {
-    redirect_uris: string[]
-    grant_types?: string[]
-    response_types?: string[]
-    token_endpoint_auth_method?: string
-    client_name?: string
-    scope?: string
-  }): ClientRecord {
-    const client: ClientRecord = {
-      client_id: crypto.randomBytes(32).toString('hex'),
-      client_id_issued_at: nowSeconds(),
-      redirect_uris: input.redirect_uris,
-      grant_types: input.grant_types ?? ['authorization_code', 'refresh_token'],
-      response_types: input.response_types ?? ['code'],
-      token_endpoint_auth_method: input.token_endpoint_auth_method ?? 'none',
-      client_name: input.client_name,
-      scope: input.scope ?? 'mcp',
-    }
-    this.clients.set(client.client_id, client)
-    return client
+export function issueClientId(input: {
+  redirect_uris: string[]
+  grant_types?: string[]
+  response_types?: string[]
+  token_endpoint_auth_method?: string
+  client_name?: string
+  scope?: string
+}): ClientRecord {
+  const iat = nowSeconds()
+  const payload: ClientPayload = {
+    typ: 'client',
+    redirect_uris: input.redirect_uris,
+    grant_types: input.grant_types ?? ['authorization_code', 'refresh_token'],
+    response_types: input.response_types ?? ['code'],
+    token_endpoint_auth_method: input.token_endpoint_auth_method ?? 'none',
+    client_name: input.client_name,
+    scope: input.scope ?? 'mcp',
+    iat,
+    jti: jti(),
   }
-
-  getClient(clientId: string): ClientRecord | undefined {
-    return this.clients.get(clientId)
+  // Note: no `exp` — DCR registrations are intended to be long-lived. The
+  // signing key (derived from MCP_PUBLIC_KEY) is the kill switch.
+  const client_id = signJWT(payload, getSigningKey())
+  return {
+    client_id,
+    client_id_issued_at: iat,
+    redirect_uris: payload.redirect_uris,
+    grant_types: payload.grant_types,
+    response_types: payload.response_types,
+    token_endpoint_auth_method: payload.token_endpoint_auth_method,
+    client_name: payload.client_name,
+    scope: payload.scope,
   }
+}
+
+export function verifyClientId(clientId: string): ClientPayload | null {
+  const payload = verifyJWT<ClientPayload>(clientId, getSigningKey())
+  if (!payload || payload.typ !== 'client') return null
+  if (!Array.isArray(payload.redirect_uris)) return null
+  return payload
 }

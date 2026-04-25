@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
-  OAuthStore,
   issueAuthCode,
   verifyAuthCode,
   issueAccessToken,
   verifyAccessToken,
   issueRefreshToken,
   verifyRefreshToken,
+  issueClientId,
+  verifyClientId,
   _resetSigningKeyCache,
   TTL,
 } from './store.js'
@@ -215,28 +216,62 @@ describe('signing key derivation domain separation', () => {
   })
 })
 
-describe('OAuthStore (client registration — still in-memory)', () => {
-  let store: OAuthStore
-
-  beforeEach(() => {
-    store = new OAuthStore()
+describe('issueClientId / verifyClientId (DCR client_id is a JWT)', () => {
+  it('issues a JWT-shaped client_id encoding registered metadata', () => {
+    const c = issueClientId({
+      redirect_uris: ['https://a.example/cb'],
+      client_name: 'Test',
+    })
+    expect(c.client_id).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/)
+    expect(c.redirect_uris).toEqual(['https://a.example/cb'])
+    expect(c.grant_types).toContain('authorization_code')
+    expect(c.grant_types).toContain('refresh_token')
+    expect(c.response_types).toEqual(['code'])
+    expect(c.token_endpoint_auth_method).toBe('none')
+    expect(c.scope).toBe('mcp')
+    expect(typeof c.client_id_issued_at).toBe('number')
   })
 
-  it('issues unique client_ids and echoes registered metadata', () => {
-    const a = store.registerClient({ redirect_uris: ['https://a.example/cb'] })
-    const b = store.registerClient({ redirect_uris: ['https://b.example/cb'] })
+  it('issues distinct client_ids on back-to-back calls (different jti)', () => {
+    const a = issueClientId({ redirect_uris: ['https://a/cb'] })
+    const b = issueClientId({ redirect_uris: ['https://a/cb'] })
     expect(a.client_id).not.toEqual(b.client_id)
-    expect(a.client_id).toMatch(/^[a-f0-9]{64}$/)
-    expect(a.redirect_uris).toEqual(['https://a.example/cb'])
-    expect(a.grant_types).toContain('authorization_code')
-    expect(a.response_types).toEqual(['code'])
-    expect(a.token_endpoint_auth_method).toBe('none')
-    expect(typeof a.client_id_issued_at).toBe('number')
   })
 
-  it('allows retrieving a registered client by id', () => {
-    const c = store.registerClient({ redirect_uris: ['https://x.example/cb'] })
-    expect(store.getClient(c.client_id)?.client_id).toBe(c.client_id)
-    expect(store.getClient('unknown')).toBeUndefined()
+  it('verifyClientId round-trips the registered metadata', () => {
+    const c = issueClientId({
+      redirect_uris: ['https://claude.ai/cb', 'https://other/cb'],
+      grant_types: ['authorization_code'],
+    })
+    const v = verifyClientId(c.client_id)
+    expect(v).not.toBeNull()
+    expect(v!.typ).toBe('client')
+    expect(v!.redirect_uris).toEqual(['https://claude.ai/cb', 'https://other/cb'])
+    expect(v!.grant_types).toEqual(['authorization_code'])
+  })
+
+  it('verifyClientId returns null for garbage', () => {
+    expect(verifyClientId('not-a-jwt')).toBeNull()
+    expect(verifyClientId('')).toBeNull()
+  })
+
+  it('verifyClientId returns null for a token of a different typ', () => {
+    const access = issueAccessToken({ sub: 'u', client_id: 'c1', resource: null, scope: 'mcp' })
+    expect(verifyClientId(access)).toBeNull()
+  })
+
+  it('verifyClientId returns null after MCP_PUBLIC_KEY rotation (kill switch)', () => {
+    const c = issueClientId({ redirect_uris: ['https://a/cb'] })
+    process.env.MCP_PUBLIC_KEY = 'rotated'
+    _resetSigningKeyCache()
+    expect(verifyClientId(c.client_id)).toBeNull()
+  })
+
+  it('issued client_ids do NOT carry an exp (long-lived registration)', () => {
+    const c = issueClientId({ redirect_uris: ['https://a/cb'] })
+    const v = verifyClientId(c.client_id)
+    expect(v).not.toBeNull()
+    // No exp field on payload
+    expect((v as Record<string, unknown>).exp).toBeUndefined()
   })
 })
