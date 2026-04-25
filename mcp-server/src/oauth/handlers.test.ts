@@ -1,8 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import http from 'node:http'
 import { Readable } from 'node:stream'
 import crypto from 'node:crypto'
-import { OAuthStore } from './store.js'
+import {
+  OAuthStore,
+  issueAuthCode,
+  verifyAccessToken,
+  verifyRefreshToken,
+  _resetSigningKeyCache,
+} from './store.js'
 import { base64UrlEncode } from './pkce.js'
 import {
   handleAuthServerMetadata,
@@ -13,6 +19,19 @@ import {
   handleToken,
   buildWwwAuthenticate,
 } from './handlers.js'
+
+const PREV_KEY = process.env.MCP_PUBLIC_KEY
+
+beforeEach(() => {
+  process.env.MCP_PUBLIC_KEY = 'test-mcp-key'
+  _resetSigningKeyCache()
+})
+
+afterEach(() => {
+  if (PREV_KEY === undefined) delete process.env.MCP_PUBLIC_KEY
+  else process.env.MCP_PUBLIC_KEY = PREV_KEY
+  _resetSigningKeyCache()
+})
 
 // ---------- test helpers: fake req/res ----------
 
@@ -80,6 +99,15 @@ function makeChallenge(verifier: string): string {
   return base64UrlEncode(crypto.createHash('sha256').update(verifier).digest())
 }
 
+const baseDeps = (store: OAuthStore, authorizationToken = 'the-secret') => ({
+  store,
+  authorizationToken,
+  ownerUserId: 'owner-user-id',
+})
+
+// JWTs are 3 base64url segments. Used by tests to assert shape rather than length.
+const JWT_REGEX = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/
+
 // ---------- tests ----------
 
 describe('OAuth metadata endpoints', () => {
@@ -143,12 +171,13 @@ describe('POST /register (DCR)', () => {
       }),
     })
     const { res, captured, done } = makeRes()
-    await handleRegister(req, res, { store, authorizationToken: 'secret' })
+    await handleRegister(req, res, baseDeps(store, 'secret'))
     await done
 
     expect(captured.statusCode).toBe(201)
     const body = JSON.parse(captured.body)
-    expect(body.client_id).toMatch(/^[a-f0-9]{64}$/)
+    expect(typeof body.client_id).toBe('string')
+    expect(body.client_id.length).toBeGreaterThan(0)
     expect(body.redirect_uris).toEqual(['https://claude.ai/api/mcp/auth_callback'])
     expect(body.token_endpoint_auth_method).toBe('none')
     // client_secret intentionally absent (public client)
@@ -164,7 +193,7 @@ describe('POST /register (DCR)', () => {
       body: JSON.stringify({}),
     })
     const { res, captured, done } = makeRes()
-    await handleRegister(req, res, { store, authorizationToken: 'secret' })
+    await handleRegister(req, res, baseDeps(store, 'secret'))
     await done
 
     expect(captured.statusCode).toBe(400)
@@ -181,7 +210,7 @@ describe('POST /register (DCR)', () => {
       body: JSON.stringify({ redirect_uris: ['http://evil.example/cb'] }),
     })
     const { res, captured, done } = makeRes()
-    await handleRegister(req, res, { store, authorizationToken: 'secret' })
+    await handleRegister(req, res, baseDeps(store, 'secret'))
     await done
 
     expect(captured.statusCode).toBe(400)
@@ -204,7 +233,7 @@ describe('GET /authorize (render HTML form)', () => {
 
     const req = makeReq({ url })
     const { res, captured, done } = makeRes()
-    await handleAuthorizeGet(req, res, { store, authorizationToken: 'secret' })
+    await handleAuthorizeGet(req, res, baseDeps(store, 'secret'))
     await done
 
     expect(captured.statusCode).toBe(200)
@@ -222,7 +251,7 @@ describe('GET /authorize (render HTML form)', () => {
       url: '/authorize?response_type=code&client_id=bad&redirect_uri=https://x/cb&code_challenge=a&code_challenge_method=S256',
     })
     const { res, captured, done } = makeRes()
-    await handleAuthorizeGet(req, res, { store, authorizationToken: 'secret' })
+    await handleAuthorizeGet(req, res, baseDeps(store, 'secret'))
     await done
 
     expect(captured.statusCode).toBe(400)
@@ -236,7 +265,7 @@ describe('GET /authorize (render HTML form)', () => {
       url: `/authorize?response_type=code&client_id=${client.client_id}&redirect_uri=${encodeURIComponent('https://a/cb')}&code_challenge=abc&code_challenge_method=plain`,
     })
     const { res, captured, done } = makeRes()
-    await handleAuthorizeGet(req, res, { store, authorizationToken: 'secret' })
+    await handleAuthorizeGet(req, res, baseDeps(store, 'secret'))
     await done
 
     expect(captured.statusCode).toBe(400)
@@ -245,7 +274,7 @@ describe('GET /authorize (render HTML form)', () => {
 })
 
 describe('POST /authorize (submit form)', () => {
-  it('redirects with code+state when authorization_token matches', async () => {
+  it('redirects with code+state when authorization_token matches; code is a JWT', async () => {
     const store = new OAuthStore()
     const client = store.registerClient({ redirect_uris: ['https://claude.ai/cb'] })
     const form = new URLSearchParams({
@@ -265,7 +294,7 @@ describe('POST /authorize (submit form)', () => {
       body: form.toString(),
     })
     const { res, captured, done } = makeRes()
-    await handleAuthorizePost(req, res, { store, authorizationToken: 'the-secret' })
+    await handleAuthorizePost(req, res, baseDeps(store, 'the-secret'))
     await done
 
     expect(captured.statusCode).toBe(302)
@@ -274,9 +303,7 @@ describe('POST /authorize (submit form)', () => {
     expect(redirectUrl.origin + redirectUrl.pathname).toBe('https://claude.ai/cb')
     expect(redirectUrl.searchParams.get('state')).toBe('random-state')
     const code = redirectUrl.searchParams.get('code')
-    expect(code).toMatch(/^[a-f0-9]{64}$/)
-    // Code should be stored
-    expect(store._stats().codes).toBe(1)
+    expect(code).toMatch(JWT_REGEX)
   })
 
   it('re-renders the form with an error when authorization_token is wrong', async () => {
@@ -297,13 +324,11 @@ describe('POST /authorize (submit form)', () => {
       body: form.toString(),
     })
     const { res, captured, done } = makeRes()
-    await handleAuthorizePost(req, res, { store, authorizationToken: 'the-secret' })
+    await handleAuthorizePost(req, res, baseDeps(store, 'the-secret'))
     await done
 
     expect(captured.statusCode).toBe(401)
     expect(captured.body).toContain('Token incorrecto')
-    // No code should have been issued
-    expect(store._stats().codes).toBe(0)
   })
 })
 
@@ -318,8 +343,8 @@ describe('POST /token', () => {
     const verifier = crypto.randomBytes(48).toString('base64url')
     const challenge = makeChallenge(verifier)
 
-    // Bypass the form handler — directly seed a code.
-    const code = store.issueAuthCode({
+    // Bypass the form handler — directly mint a code JWT.
+    const codeJwt = issueAuthCode({
       client_id: client.client_id,
       redirect_uri: 'https://claude.ai/cb',
       code_challenge: challenge,
@@ -330,7 +355,7 @@ describe('POST /token', () => {
 
     const form = new URLSearchParams({
       grant_type: 'authorization_code',
-      code: code.code,
+      code: codeJwt,
       redirect_uri: opts?.redirectUriOverride ?? 'https://claude.ai/cb',
       client_id: opts?.clientIdOverride ?? client.client_id,
       code_verifier: opts?.codeVerifierOverride ?? verifier,
@@ -342,46 +367,26 @@ describe('POST /token', () => {
       body: form.toString(),
     })
     const { res, captured, done } = makeRes()
-    await handleToken(req, res, { store, authorizationToken: 'the-secret' })
+    await handleToken(req, res, baseDeps(store))
     await done
-    return { store, client, captured, code: code.code }
+    return { store, client, captured, codeJwt }
   }
 
-  it('exchanges a valid authorization code for an access+refresh token pair', async () => {
-    const { captured, store } = await runAuthCodeFlow()
+  it('exchanges a valid authorization code for an access+refresh token JWT pair', async () => {
+    const { captured } = await runAuthCodeFlow()
     expect(captured.statusCode).toBe(200)
     const body = JSON.parse(captured.body)
     expect(body.token_type).toBe('Bearer')
-    expect(body.access_token).toMatch(/^[a-f0-9]{64}$/)
-    expect(body.refresh_token).toMatch(/^[a-f0-9]{64}$/)
+    expect(body.access_token).toMatch(JWT_REGEX)
+    expect(body.refresh_token).toMatch(JWT_REGEX)
     expect(body.expires_in).toBeGreaterThan(3600)
     expect(body.scope).toBe('mcp')
-    // Lookup the issued access token
-    expect(store.getToken(body.access_token)?.kind).toBe('access')
-  })
-
-  it('rejects re-use of a consumed authorization code', async () => {
-    const { captured, code, store } = await runAuthCodeFlow()
-    expect(captured.statusCode).toBe(200)
-    // Re-use the same code
-    const form = new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: 'https://claude.ai/cb',
-      client_id: 'anything',
-      code_verifier: 'anything',
-    })
-    const req = makeReq({
-      method: 'POST',
-      url: '/token',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: form.toString(),
-    })
-    const { res, captured: second, done } = makeRes()
-    await handleToken(req, res, { store, authorizationToken: 'secret' })
-    await done
-    expect(second.statusCode).toBe(400)
-    expect(JSON.parse(second.body).error).toBe('invalid_grant')
+    // Verify the issued tokens are valid JWTs of the right type
+    const access = verifyAccessToken(body.access_token)
+    expect(access?.client_id).toBeDefined()
+    expect(access?.sub).toBe('owner-user-id')
+    const refresh = verifyRefreshToken(body.refresh_token)
+    expect(refresh?.sub).toBe('owner-user-id')
   })
 
   it('rejects a code exchange with a wrong code_verifier (PKCE mismatch)', async () => {
@@ -399,14 +404,14 @@ describe('POST /token', () => {
     expect(JSON.parse(captured.body).error).toBe('invalid_grant')
   })
 
-  it('refresh_token grant rotates the refresh token and issues a new access token', async () => {
+  it('rejects a malformed/garbage code', async () => {
     const store = new OAuthStore()
-    const pair = store.issueTokenPair({ client_id: 'c1', resource: 'https://mcp/mcp', scope: 'mcp' })
-
     const form = new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: pair.refresh.token,
-      client_id: 'c1',
+      grant_type: 'authorization_code',
+      code: 'definitely-not-a-jwt',
+      redirect_uri: 'https://claude.ai/cb',
+      client_id: 'whatever',
+      code_verifier: 'a'.repeat(64),
     })
     const req = makeReq({
       method: 'POST',
@@ -415,16 +420,62 @@ describe('POST /token', () => {
       body: form.toString(),
     })
     const { res, captured, done } = makeRes()
-    await handleToken(req, res, { store, authorizationToken: 'secret' })
+    await handleToken(req, res, baseDeps(store))
+    await done
+    expect(captured.statusCode).toBe(400)
+    expect(JSON.parse(captured.body).error).toBe('invalid_grant')
+  })
+
+  it('refresh_token grant issues a new access + refresh JWT', async () => {
+    const { captured: first } = await runAuthCodeFlow()
+    expect(first.statusCode).toBe(200)
+    const firstBody = JSON.parse(first.body)
+
+    const store = new OAuthStore()
+    const form = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: firstBody.refresh_token,
+    })
+    const req = makeReq({
+      method: 'POST',
+      url: '/token',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
+    })
+    const { res, captured, done } = makeRes()
+    await handleToken(req, res, baseDeps(store))
     await done
 
     expect(captured.statusCode).toBe(200)
     const body = JSON.parse(captured.body)
-    expect(body.access_token).not.toEqual(pair.access.token)
-    expect(body.refresh_token).not.toEqual(pair.refresh.token)
-    // Old tokens are revoked
-    expect(store.getToken(pair.access.token)).toBeUndefined()
-    expect(store.getToken(pair.refresh.token)).toBeUndefined()
+    expect(body.access_token).toMatch(JWT_REGEX)
+    expect(body.refresh_token).toMatch(JWT_REGEX)
+    // Different jti -> different JWT bytes
+    expect(body.access_token).not.toEqual(firstBody.access_token)
+    expect(body.refresh_token).not.toEqual(firstBody.refresh_token)
+  })
+
+  it('refresh_token grant rejects a non-refresh JWT (e.g. an access token)', async () => {
+    const { captured: first } = await runAuthCodeFlow()
+    const firstBody = JSON.parse(first.body)
+
+    const store = new OAuthStore()
+    const form = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: firstBody.access_token, // wrong typ
+    })
+    const req = makeReq({
+      method: 'POST',
+      url: '/token',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: form.toString(),
+    })
+    const { res, captured, done } = makeRes()
+    await handleToken(req, res, baseDeps(store))
+    await done
+
+    expect(captured.statusCode).toBe(400)
+    expect(JSON.parse(captured.body).error).toBe('invalid_grant')
   })
 
   it('returns unsupported_grant_type for unknown grants', async () => {
@@ -436,7 +487,7 @@ describe('POST /token', () => {
       body: new URLSearchParams({ grant_type: 'password' }).toString(),
     })
     const { res, captured, done } = makeRes()
-    await handleToken(req, res, { store, authorizationToken: 'secret' })
+    await handleToken(req, res, baseDeps(store))
     await done
     expect(captured.statusCode).toBe(400)
     expect(JSON.parse(captured.body).error).toBe('unsupported_grant_type')

@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { ApiClient } from './api-client.js'
 import { buildMcpServer } from './server.js'
-import { OAuthStore } from './oauth/store.js'
+import { OAuthStore, verifyAccessToken } from './oauth/store.js'
 import {
   handleAuthorizeGet,
   handleAuthorizePost,
@@ -19,16 +19,21 @@ const PORT = Number(process.env.PORT ?? 3333)
 const APP_URL = process.env.APP_URL
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY
 const MCP_PUBLIC_KEY = process.env.MCP_PUBLIC_KEY
+const OWNER_USER_ID = process.env.OWNER_USER_ID
 
-if (!APP_URL || !INTERNAL_API_KEY || !MCP_PUBLIC_KEY) {
-  console.error('Missing required env vars: APP_URL, INTERNAL_API_KEY, MCP_PUBLIC_KEY')
+if (!APP_URL || !INTERNAL_API_KEY || !MCP_PUBLIC_KEY || !OWNER_USER_ID) {
+  console.error('Missing required env vars: APP_URL, INTERNAL_API_KEY, MCP_PUBLIC_KEY, OWNER_USER_ID')
   process.exit(1)
 }
 
 const api = new ApiClient(APP_URL.replace(/\/$/, '') + '/api', INTERNAL_API_KEY)
 
 const oauthStore = new OAuthStore()
-const oauthDeps = { store: oauthStore, authorizationToken: MCP_PUBLIC_KEY! }
+const oauthDeps = {
+  store: oauthStore,
+  authorizationToken: MCP_PUBLIC_KEY!,
+  ownerUserId: OWNER_USER_ID!,
+}
 
 async function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = []
@@ -51,35 +56,39 @@ function unauthorized(req: http.IncomingMessage, res: http.ServerResponse, error
 }
 
 /**
- * Authenticate an incoming /mcp request. Two paths:
- *   1. OAuth: Bearer token looked up in the in-memory store (the normal path).
- *   2. Fallback: Bearer token == MCP_PUBLIC_KEY exactly (for curl/debugging).
+ * Authenticate an incoming /mcp request. Two paths, in order:
+ *   1. OAuth: Bearer is a JWT signed with the derived JWT key (the
+ *      normal path used by Claude.ai). Stateless — survives restarts.
+ *   2. Legacy: Bearer == MCP_PUBLIC_KEY exactly (for curl/debugging),
+ *      compared with crypto.timingSafeEqual.
  *
- * For OAuth tokens we also enforce audience binding (RFC 8707): if the token
- * was issued with a `resource` parameter, it must match this server's canonical
- * /mcp URI. Legacy/fallback tokens skip this check since they aren't bound.
+ * For OAuth tokens we also enforce audience binding (RFC 8707): if the
+ * token was issued with a `resource` parameter, it must match this
+ * server's canonical /mcp URI or its issuer origin. Legacy fallback
+ * tokens skip this check since they aren't bound to a resource.
  */
 function authenticateMcp(req: http.IncomingMessage): { ok: true } | { ok: false; error: string } {
   const authHeader = (req.headers['authorization'] as string | undefined) ?? ''
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
   if (!token) return { ok: false, error: 'invalid_token' }
 
-  // 1. OAuth path
-  const tokenRec = oauthStore.getToken(token)
-  if (tokenRec) {
-    if (tokenRec.kind !== 'access') return { ok: false, error: 'invalid_token' }
-    if (tokenRec.resource) {
+  // 1. JWT access-token path
+  const claims = verifyAccessToken(token)
+  if (claims) {
+    if (claims.resource) {
       const expectedResource = getResourceUri(req)
       // Accept either the exact /mcp URI or the issuer origin (both are canonical per spec).
       const issuer = expectedResource.replace(/\/mcp$/, '')
-      if (tokenRec.resource !== expectedResource && tokenRec.resource !== issuer) {
+      if (claims.resource !== expectedResource && claims.resource !== issuer) {
         return { ok: false, error: 'invalid_token' }
       }
     }
     return { ok: true }
   }
 
-  // 2. Legacy static-key fallback (kept for debugging; timing-safe compare)
+  // 2. Legacy static-key fallback (kept for debugging; timing-safe compare).
+  // This is intentionally NOT a JWT path — it lets cURL hit /mcp by sending
+  // the raw MCP_PUBLIC_KEY value, which is convenient for ad-hoc testing.
   const expected = MCP_PUBLIC_KEY!
   const tokenBuf = Buffer.from(token)
   const expectedBuf = Buffer.from(expected)

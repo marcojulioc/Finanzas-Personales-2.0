@@ -1,6 +1,14 @@
 import http from 'node:http'
 import crypto from 'node:crypto'
-import { OAuthStore, TTL } from './store.js'
+import {
+  OAuthStore,
+  TTL,
+  issueAuthCode,
+  verifyAuthCode,
+  issueAccessToken,
+  issueRefreshToken,
+  verifyRefreshToken,
+} from './store.js'
 import { verifyS256 } from './pkce.js'
 
 /**
@@ -19,6 +27,8 @@ export type OAuthDeps = {
   store: OAuthStore
   /** Static shared secret the user pastes on the consent page. */
   authorizationToken: string
+  /** sub claim for access/refresh tokens (single-tenant: hardcoded user id). */
+  ownerUserId: string
 }
 
 /** Build the canonical public origin (`https://host`) from the request headers. */
@@ -293,8 +303,8 @@ export async function handleAuthorizePost(req: http.IncomingMessage, res: http.S
     return sendHtml(res, 401, renderAuthorizePage(params, 'Token incorrecto. Vuelve a intentarlo.'))
   }
 
-  // Issue authorization code
-  const auth = deps.store.issueAuthCode({
+  // Issue authorization code as a signed JWT (stateless).
+  const codeJwt = issueAuthCode({
     client_id: params.client_id,
     redirect_uri: params.redirect_uri,
     code_challenge: params.code_challenge,
@@ -304,7 +314,7 @@ export async function handleAuthorizePost(req: http.IncomingMessage, res: http.S
   })
 
   const redirect = new URL(params.redirect_uri)
-  redirect.searchParams.set('code', auth.code)
+  redirect.searchParams.set('code', codeJwt)
   if (params.state) redirect.searchParams.set('state', params.state)
 
   res.writeHead(302, { location: redirect.toString(), 'cache-control': 'no-store' })
@@ -523,7 +533,10 @@ function handleAuthCodeGrant(
     })
   }
 
-  const record = deps.store.consumeAuthCode(code)
+  // Verify the authorization code JWT. We can't enforce single-use without
+  // server state — we rely on the 5-minute exp + the PKCE code_verifier
+  // (which the attacker doesn't have) to make replay useless.
+  const record = verifyAuthCode(code)
   if (!record) {
     return sendJson(res, 400, { error: 'invalid_grant', error_description: 'Code not found or expired' })
   }
@@ -538,17 +551,24 @@ function handleAuthCodeGrant(
     return sendJson(res, 400, { error: 'invalid_grant', error_description: 'code_verifier mismatch' })
   }
 
-  const { access, refresh } = deps.store.issueTokenPair({
+  const accessToken = issueAccessToken({
+    sub: deps.ownerUserId,
+    client_id: record.client_id,
+    resource: record.resource,
+    scope: record.scope,
+  })
+  const refreshToken = issueRefreshToken({
+    sub: deps.ownerUserId,
     client_id: record.client_id,
     resource: record.resource,
     scope: record.scope,
   })
 
   sendJson(res, 200, {
-    access_token: access.token,
+    access_token: accessToken,
     token_type: 'Bearer',
-    expires_in: Math.floor(TTL.ACCESS_TOKEN_MS / 1000),
-    refresh_token: refresh.token,
+    expires_in: TTL.ACCESS_TOKEN_S,
+    refresh_token: refreshToken,
     scope: record.scope,
   })
 }
@@ -564,25 +584,38 @@ function handleRefreshGrant(
     return sendJson(res, 400, { error: 'invalid_request', error_description: 'refresh_token is required' })
   }
 
-  const existing = deps.store.getToken(refreshToken)
-  if (!existing || existing.kind !== 'refresh') {
+  const existing = verifyRefreshToken(refreshToken)
+  if (!existing) {
     return sendJson(res, 400, { error: 'invalid_grant', error_description: 'Refresh token not found or expired' })
   }
   if (clientId && clientId !== existing.client_id) {
     return sendJson(res, 400, { error: 'invalid_grant', error_description: 'client_id mismatch' })
   }
 
-  const pair = deps.store.rotateRefresh(refreshToken)
-  if (!pair) {
-    return sendJson(res, 400, { error: 'invalid_grant', error_description: 'Refresh token could not be rotated' })
-  }
+  // Rotation — issue new access + refresh JWTs. Note: the previous refresh
+  // token remains valid until its `exp` because we cannot enforce single-use
+  // without server state. This is a documented deviation from strict
+  // OAuth 2.1 §4.3.1 and is accepted by Claude.ai for this single-user
+  // deployment.
+  const newAccess = issueAccessToken({
+    sub: deps.ownerUserId,
+    client_id: existing.client_id,
+    resource: existing.resource,
+    scope: existing.scope,
+  })
+  const newRefresh = issueRefreshToken({
+    sub: deps.ownerUserId,
+    client_id: existing.client_id,
+    resource: existing.resource,
+    scope: existing.scope,
+  })
 
   sendJson(res, 200, {
-    access_token: pair.access.token,
+    access_token: newAccess,
     token_type: 'Bearer',
-    expires_in: Math.floor(TTL.ACCESS_TOKEN_MS / 1000),
-    refresh_token: pair.refresh.token,
-    scope: pair.access.scope,
+    expires_in: TTL.ACCESS_TOKEN_S,
+    refresh_token: newRefresh,
+    scope: existing.scope,
   })
 }
 

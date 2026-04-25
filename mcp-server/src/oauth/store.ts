@@ -1,16 +1,213 @@
 import crypto from 'node:crypto'
+import { signJWT, verifyJWT, deriveSigningKey } from './jwt.js'
 
 /**
- * In-memory OAuth state for the MCP server.
+ * Stateless OAuth state for the MCP server.
  *
- * Single-user, single-replica personal deployment — a restart just forces
- * Claude.ai to re-authenticate (one click). No persistence needed.
+ * Authorization codes, access tokens, and refresh tokens are issued as
+ * signed JWTs (HS256). They survive process restarts (Railway redeploys),
+ * which means Claude.ai's connector keeps working without a forced
+ * re-authorization on every code change.
  *
- * Three Maps:
- *   - clients: client_id -> registered DCR metadata
- *   - codes:   authorization_code -> {pkce, client, redirect_uri, resource, exp}
- *   - tokens:  access_token | refresh_token -> token record
+ * Trade-off: stateless tokens cannot be revoked individually. We accept
+ * that for this single-user deployment. The kill switch is rotating
+ * `MCP_PUBLIC_KEY` (the JWT signing key is derived from it), which
+ * invalidates every issued token at once.
+ *
+ * Refresh-token semantics deviate slightly from strict OAuth 2.1: the
+ * /token refresh grant issues a fresh refresh JWT (rotation) but the
+ * old one remains valid until its `exp`. Without server-side state we
+ * cannot enforce single-use. This is accepted by Claude.ai and
+ * documented here so it isn't mistaken for a bug.
+ *
+ * Client registration is still in-memory in this commit (see OAuthStore
+ * below); a follow-up commit makes the DCR client_id itself a JWT and
+ * removes the Map entirely.
  */
+
+// ---------------------------------------------------------------------------
+// TTLs and signing-key resolution
+// ---------------------------------------------------------------------------
+
+const ACCESS_TOKEN_TTL_S = 24 * 60 * 60 // 24h
+const REFRESH_TOKEN_TTL_S = 30 * 24 * 60 * 60 // 30d
+const AUTH_CODE_TTL_S = 5 * 60 // 5 min
+
+export const TTL = {
+  ACCESS_TOKEN_S: ACCESS_TOKEN_TTL_S,
+  REFRESH_TOKEN_S: REFRESH_TOKEN_TTL_S,
+  AUTH_CODE_S: AUTH_CODE_TTL_S,
+  // Back-compat aliases (ms) used by handlers that emit `expires_in` in seconds.
+  ACCESS_TOKEN_MS: ACCESS_TOKEN_TTL_S * 1000,
+  REFRESH_TOKEN_MS: REFRESH_TOKEN_TTL_S * 1000,
+  AUTH_CODE_MS: AUTH_CODE_TTL_S * 1000,
+}
+
+let cachedKey: Buffer | null = null
+let cachedSecret: string | null = null
+
+/**
+ * Resolve the JWT signing key from process.env.MCP_PUBLIC_KEY at call time.
+ * Cached per-secret so we don't rehash on every issue/verify but still
+ * pick up env changes during tests (which mutate process.env).
+ */
+export function getSigningKey(): Buffer {
+  const secret = process.env.MCP_PUBLIC_KEY
+  if (!secret) {
+    throw new Error('MCP_PUBLIC_KEY is required to sign/verify OAuth JWTs')
+  }
+  if (cachedKey && cachedSecret === secret) return cachedKey
+  cachedKey = deriveSigningKey(secret)
+  cachedSecret = secret
+  return cachedKey
+}
+
+/** @internal — used by tests to force key re-derivation between cases. */
+export function _resetSigningKeyCache() {
+  cachedKey = null
+  cachedSecret = null
+}
+
+function nowSeconds(): number {
+  return Math.floor(Date.now() / 1000)
+}
+
+function jti(): string {
+  return crypto.randomBytes(16).toString('hex')
+}
+
+// ---------------------------------------------------------------------------
+// Authorization code JWTs
+// ---------------------------------------------------------------------------
+
+export type AuthCodePayload = {
+  typ: 'code'
+  client_id: string
+  redirect_uri: string
+  resource: string | null
+  code_challenge: string
+  code_challenge_method: 'S256'
+  scope: string
+  exp: number
+  iat: number
+  jti: string
+}
+
+export function issueAuthCode(input: {
+  client_id: string
+  redirect_uri: string
+  resource: string | null
+  code_challenge: string
+  code_challenge_method: 'S256'
+  scope: string
+}): string {
+  const iat = nowSeconds()
+  const payload: AuthCodePayload = {
+    typ: 'code',
+    client_id: input.client_id,
+    redirect_uri: input.redirect_uri,
+    resource: input.resource,
+    code_challenge: input.code_challenge,
+    code_challenge_method: input.code_challenge_method,
+    scope: input.scope,
+    iat,
+    exp: iat + AUTH_CODE_TTL_S,
+    jti: jti(),
+  }
+  return signJWT(payload, getSigningKey())
+}
+
+export function verifyAuthCode(token: string): AuthCodePayload | null {
+  const payload = verifyJWT<AuthCodePayload>(token, getSigningKey())
+  if (!payload || payload.typ !== 'code') return null
+  return payload
+}
+
+// ---------------------------------------------------------------------------
+// Access token JWTs
+// ---------------------------------------------------------------------------
+
+export type AccessTokenPayload = {
+  typ: 'access'
+  sub: string
+  client_id: string
+  resource: string | null
+  scope: string
+  exp: number
+  iat: number
+  jti: string
+}
+
+export function issueAccessToken(input: {
+  sub: string
+  client_id: string
+  resource: string | null
+  scope: string
+}): string {
+  const iat = nowSeconds()
+  const payload: AccessTokenPayload = {
+    typ: 'access',
+    sub: input.sub,
+    client_id: input.client_id,
+    resource: input.resource,
+    scope: input.scope,
+    iat,
+    exp: iat + ACCESS_TOKEN_TTL_S,
+    jti: jti(),
+  }
+  return signJWT(payload, getSigningKey())
+}
+
+export function verifyAccessToken(token: string): AccessTokenPayload | null {
+  const payload = verifyJWT<AccessTokenPayload>(token, getSigningKey())
+  if (!payload || payload.typ !== 'access') return null
+  return payload
+}
+
+// ---------------------------------------------------------------------------
+// Refresh token JWTs
+// ---------------------------------------------------------------------------
+
+export type RefreshTokenPayload = {
+  typ: 'refresh'
+  sub: string
+  client_id: string
+  resource: string | null
+  scope: string
+  exp: number
+  iat: number
+  jti: string
+}
+
+export function issueRefreshToken(input: {
+  sub: string
+  client_id: string
+  resource: string | null
+  scope: string
+}): string {
+  const iat = nowSeconds()
+  const payload: RefreshTokenPayload = {
+    typ: 'refresh',
+    sub: input.sub,
+    client_id: input.client_id,
+    resource: input.resource,
+    scope: input.scope,
+    iat,
+    exp: iat + REFRESH_TOKEN_TTL_S,
+    jti: jti(),
+  }
+  return signJWT(payload, getSigningKey())
+}
+
+export function verifyRefreshToken(token: string): RefreshTokenPayload | null {
+  const payload = verifyJWT<RefreshTokenPayload>(token, getSigningKey())
+  if (!payload || payload.typ !== 'refresh') return null
+  return payload
+}
+
+// ---------------------------------------------------------------------------
+// Client registration (still in-memory in this commit)
+// ---------------------------------------------------------------------------
 
 export type ClientRecord = {
   client_id: string
@@ -23,40 +220,8 @@ export type ClientRecord = {
   scope?: string
 }
 
-export type AuthCodeRecord = {
-  code: string
-  client_id: string
-  redirect_uri: string
-  code_challenge: string
-  code_challenge_method: 'S256'
-  resource: string | null
-  scope: string
-  expires_at: number // epoch ms
-}
-
-export type TokenKind = 'access' | 'refresh'
-
-export type TokenRecord = {
-  token: string
-  kind: TokenKind
-  client_id: string
-  resource: string | null
-  scope: string
-  expires_at: number // epoch ms
-  /** For refresh tokens, the access_token issued alongside (for rotation cleanup). */
-  siblingAccessToken?: string
-}
-
-const ACCESS_TOKEN_TTL_MS = 24 * 60 * 60 * 1000 // 24h
-const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30d
-const AUTH_CODE_TTL_MS = 5 * 60 * 1000 // 5 min
-
 export class OAuthStore {
   private clients = new Map<string, ClientRecord>()
-  private codes = new Map<string, AuthCodeRecord>()
-  private tokens = new Map<string, TokenRecord>()
-
-  // --- Client registration (DCR) ---
 
   registerClient(input: {
     redirect_uris: string[]
@@ -67,8 +232,8 @@ export class OAuthStore {
     scope?: string
   }): ClientRecord {
     const client: ClientRecord = {
-      client_id: randomId(32),
-      client_id_issued_at: Math.floor(Date.now() / 1000),
+      client_id: crypto.randomBytes(32).toString('hex'),
+      client_id_issued_at: nowSeconds(),
       redirect_uris: input.redirect_uris,
       grant_types: input.grant_types ?? ['authorization_code', 'refresh_token'],
       response_types: input.response_types ?? ['code'],
@@ -83,132 +248,4 @@ export class OAuthStore {
   getClient(clientId: string): ClientRecord | undefined {
     return this.clients.get(clientId)
   }
-
-  // --- Authorization codes ---
-
-  issueAuthCode(input: {
-    client_id: string
-    redirect_uri: string
-    code_challenge: string
-    code_challenge_method: 'S256'
-    resource: string | null
-    scope: string
-  }): AuthCodeRecord {
-    const code = randomId(32)
-    const record: AuthCodeRecord = {
-      code,
-      client_id: input.client_id,
-      redirect_uri: input.redirect_uri,
-      code_challenge: input.code_challenge,
-      code_challenge_method: input.code_challenge_method,
-      resource: input.resource,
-      scope: input.scope,
-      expires_at: Date.now() + AUTH_CODE_TTL_MS,
-    }
-    this.codes.set(code, record)
-    return record
-  }
-
-  /** One-time: returns the record and deletes it atomically. Expired -> undefined. */
-  consumeAuthCode(code: string): AuthCodeRecord | undefined {
-    const rec = this.codes.get(code)
-    if (!rec) return undefined
-    this.codes.delete(code)
-    if (rec.expires_at < Date.now()) return undefined
-    return rec
-  }
-
-  // --- Access + refresh tokens ---
-
-  issueTokenPair(input: {
-    client_id: string
-    resource: string | null
-    scope: string
-  }): { access: TokenRecord; refresh: TokenRecord } {
-    const accessToken = randomId(32)
-    const refreshToken = randomId(32)
-    const now = Date.now()
-
-    const access: TokenRecord = {
-      token: accessToken,
-      kind: 'access',
-      client_id: input.client_id,
-      resource: input.resource,
-      scope: input.scope,
-      expires_at: now + ACCESS_TOKEN_TTL_MS,
-    }
-    const refresh: TokenRecord = {
-      token: refreshToken,
-      kind: 'refresh',
-      client_id: input.client_id,
-      resource: input.resource,
-      scope: input.scope,
-      expires_at: now + REFRESH_TOKEN_TTL_MS,
-      siblingAccessToken: accessToken,
-    }
-    this.tokens.set(accessToken, access)
-    this.tokens.set(refreshToken, refresh)
-    return { access, refresh }
-  }
-
-  /** Look up a token by its string value. Returns undefined if unknown OR expired (expired tokens are evicted). */
-  getToken(token: string): TokenRecord | undefined {
-    const rec = this.tokens.get(token)
-    if (!rec) return undefined
-    if (rec.expires_at < Date.now()) {
-      this.tokens.delete(token)
-      return undefined
-    }
-    return rec
-  }
-
-  /**
-   * Rotate a refresh token (OAuth 2.1 §4.3.1 requires rotation for public clients).
-   * Deletes the old refresh token AND its sibling access token, then issues a new pair.
-   * Returns undefined if the refresh token is unknown or expired.
-   */
-  rotateRefresh(refreshToken: string): { access: TokenRecord; refresh: TokenRecord } | undefined {
-    const rec = this.getToken(refreshToken)
-    if (!rec || rec.kind !== 'refresh') return undefined
-
-    // Revoke old refresh and its sibling access
-    this.tokens.delete(rec.token)
-    if (rec.siblingAccessToken) this.tokens.delete(rec.siblingAccessToken)
-
-    return this.issueTokenPair({
-      client_id: rec.client_id,
-      resource: rec.resource,
-      scope: rec.scope,
-    })
-  }
-
-  // --- Test helpers ---
-
-  /** @internal — used by tests to inspect size/reset state. */
-  _stats() {
-    return {
-      clients: this.clients.size,
-      codes: this.codes.size,
-      tokens: this.tokens.size,
-    }
-  }
-
-  /** @internal — used by tests. */
-  _forceExpire(token: string) {
-    const rec = this.tokens.get(token)
-    if (rec) rec.expires_at = 0
-    const code = this.codes.get(token)
-    if (code) code.expires_at = 0
-  }
-}
-
-/** 32-byte random hex id (64 chars). Cryptographically secure. */
-export function randomId(bytes = 32): string {
-  return crypto.randomBytes(bytes).toString('hex')
-}
-
-export const TTL = {
-  ACCESS_TOKEN_MS: ACCESS_TOKEN_TTL_MS,
-  REFRESH_TOKEN_MS: REFRESH_TOKEN_TTL_MS,
-  AUTH_CODE_MS: AUTH_CODE_TTL_MS,
 }
