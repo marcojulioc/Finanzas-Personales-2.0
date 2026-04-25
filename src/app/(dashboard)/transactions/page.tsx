@@ -54,6 +54,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import type { Category } from '@/lib/categories'
 import { formatCurrency, formatDate, parseLocalDate } from '@/lib/format-utils'
+import { detectCrossCurrencyPayment } from '@/lib/card-payment-utils'
 import { useUserCurrencies } from '@/hooks/use-user-currencies'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useAccounts } from '@/hooks/use-accounts'
@@ -182,15 +183,22 @@ export default function TransactionsPage() {
   const taxAmount = watchAmount ? Math.round(watchAmount * TAX_RATE * 100) / 100 : 0
   const showTaxOption = watchType === 'expense' && (watchSourceType === 'account' || watchSourceType === 'card')
 
-  // Cross-currency detection for card payments
+  // Cross-currency detection for card payments.
+  // A payment is only cross-currency when the target card has NO balance in
+  // the source account's currency. If the card has a same-currency balance,
+  // the user can pay it directly without an exchange rate. Multi-currency
+  // cards (e.g. both DOP and USD balances) paid from a same-currency account
+  // are NOT cross-currency.
   const selectedAccount = accounts.find(a => a.id === watchBankAccountId)
   const selectedCard = cards.find(c => c.id === watchTargetCardId)
-  const crossCurrencyBalance = watchIsCardPayment && selectedAccount && selectedCard
-    ? selectedCard.balances?.find((b: { currency: string }) => b.currency !== selectedAccount.currency)
-    : null
-  const isCrossCurrency = !!crossCurrencyBalance
+  const { isCrossCurrency, targetBalance: crossCurrencyBalance } =
+    detectCrossCurrencyPayment({
+      isCardPayment: watchIsCardPayment,
+      sourceAccount: selectedAccount,
+      targetCard: selectedCard,
+    })
 
-  // Auto-set currency to the card's foreign currency when cross-currency is detected
+  // Auto-set currency to the card's foreign currency when cross-currency is detected.
   useEffect(() => {
     if (isCrossCurrency && crossCurrencyBalance) {
       setValue('currency', crossCurrencyBalance.currency)
